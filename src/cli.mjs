@@ -12,7 +12,10 @@ import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import os from "node:os";
-import { inspectInstallation } from "./lib/installation.mjs";
+import {
+  inspectInstallation,
+  loadCompatibilityManifest,
+} from "./lib/installation.mjs";
 import {
   fetchUiBundle,
   findLatestUiPort,
@@ -30,6 +33,7 @@ import {
   buildPatchedAsar,
 } from "./lib/patcher.mjs";
 import {
+  areSamePaths,
   getAntigravityUserDataRoot,
   getRuntimePreviewRoot,
   getStateRoot,
@@ -262,23 +266,140 @@ async function installLocalizedBundle({
   return { created: true };
 }
 
+async function findInstalledTarget(state) {
+  const manifest = await loadCompatibilityManifest();
+  return (
+    manifest.targets.find(
+      (target) =>
+        target.platform === process.platform &&
+        target.arch === process.arch &&
+        target.appVersion === state.appVersion &&
+        target.appAsarSha256 === state.originalAsarSha256 &&
+        target.customSchemeSha256 === state.originalCustomSchemeSha256,
+    ) ?? null
+  );
+}
+
+async function updateInstalledLocalization({
+  existingState,
+  initialInspection,
+  installedBundleHash,
+  assumeYes,
+}) {
+  const target = await findInstalledTarget(existingState);
+  if (!target) {
+    throw new Error("现有汉化状态无法对应到兼容性清单，请先恢复英文。");
+  }
+
+  printStep(2, 5, "读取原始运行时 UI，生成最新中文文件");
+  const preparedBundlePath = path.join(
+    getStateRoot(),
+    "prepared",
+    "zh_cn_ui_main.js",
+  );
+  const inspectionWithTarget = { ...initialInspection, target };
+  const resolvedUi = await prepareRuntimeUi(inspectionWithTarget);
+  const localized = await generateLocalizedPreview(
+    inspectionWithTarget,
+    preparedBundlePath,
+    { resolvedUi },
+  );
+
+  if (localized.sha256 === installedBundleHash) {
+    console.log("当前汉化规则已经是最新版本，无需更新。");
+    return 0;
+  }
+
+  printStep(3, 5, "等待汉化更新确认");
+  console.log("只会更新中文 UI 文件，不会重复修改 app.asar 或原版备份。");
+  if (
+    !(await askForConfirmation("检测到新的汉化规则，确认更新吗？", {
+      assumeYes,
+    }))
+  ) {
+    console.log("已取消；现有汉化保持不变。");
+    return 0;
+  }
+
+  printStep(4, 5, "确认 Antigravity 已彻底退出并原子更新中文文件");
+  await askUserToCloseAntigravity(
+    "最新中文文件已生成。请彻底关闭 Antigravity，然后按回车继续更新...",
+  );
+  const inspection = await inspectInstallation();
+  if (
+    inspection.appAsarSha256 !== initialInspection.appAsarSha256 ||
+    inspection.packageVersion !== initialInspection.packageVersion
+  ) {
+    throw new Error("等待期间客户端文件发生变化，拒绝更新汉化。");
+  }
+
+  const currentBundleHash = await sha256File(existingState.installedBundlePath);
+  if (currentBundleHash !== installedBundleHash) {
+    throw new Error("等待期间中文 UI 文件发生变化，拒绝更新。");
+  }
+
+  let replacement;
+  try {
+    replacement = await atomicReplaceFile({
+      currentPath: existingState.installedBundlePath,
+      replacementPath: preparedBundlePath,
+      currentExpectedHash: installedBundleHash,
+      replacementExpectedHash: localized.sha256,
+    });
+
+    printStep(5, 5, "复检更新结果并保存恢复状态");
+    const updatedHash = await sha256File(existingState.installedBundlePath);
+    if (updatedHash !== localized.sha256) {
+      throw new Error("汉化更新后复检失败，正在自动回滚。");
+    }
+    await writeInstallState({
+      ...existingState,
+      updatedAt: new Date().toISOString(),
+      sourceBundleSha256: localized.sourceBundleSha256,
+      localizedBundleSha256: localized.sha256,
+    });
+    await replacement.finalize().catch((error) => {
+      console.warn(`警告：旧中文文件临时副本未能清理：${error.message}`);
+    });
+  } catch (error) {
+    if (replacement) {
+      try {
+        await replacement.rollback();
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [error, rollbackError],
+          "汉化更新失败，并且自动回滚也失败。请不要启动 Antigravity。",
+        );
+      }
+    }
+    throw error;
+  }
+
+  console.log("汉化规则更新完成。现在可以重新打开 Antigravity。");
+  return 0;
+}
+
 async function install({ assumeYes = false } = {}) {
-  const totalSteps = 7;
-  printStep(1, totalSteps, "检查环境、安装目录和客户端指纹");
   const existingState = await readInstallState();
   const initialInspection = await inspectInstallation();
-  if (
+  const hasVerifiedInstalledState =
     existingState?.status === "installed" &&
-    existingState.installRoot === initialInspection.installRoot &&
+    areSamePaths(existingState.installRoot, initialInspection.installRoot) &&
     existingState.appVersion === initialInspection.packageVersion &&
-    existingState.patchedAsarSha256 === initialInspection.appAsarSha256
-  ) {
+    existingState.patchedAsarSha256 === initialInspection.appAsarSha256;
+  const totalSteps = hasVerifiedInstalledState ? 5 : 7;
+  printStep(1, totalSteps, "检查环境、安装目录和客户端指纹");
+  if (hasVerifiedInstalledState) {
     const installedBundleHash = await sha256File(
       existingState.installedBundlePath,
     ).catch(() => null);
     if (installedBundleHash === existingState.localizedBundleSha256) {
-      console.log("当前版本已经安装汉化，无需重复修改。");
-      return 0;
+      return updateInstalledLocalization({
+        existingState,
+        initialInspection,
+        installedBundleHash,
+        assumeYes,
+      });
     }
     throw new Error(
       "检测到已安装的 ASAR 补丁，但中文 UI 文件缺失或已变化；请先恢复英文。",
@@ -503,7 +624,7 @@ async function restore() {
   );
   const inspection = await inspectInstallation();
   if (
-    inspection.installRoot !== state.installRoot ||
+    !areSamePaths(inspection.installRoot, state.installRoot) ||
     inspection.packageVersion !== state.appVersion ||
     inspection.appAsarSha256 !== state.patchedAsarSha256
   ) {

@@ -89,6 +89,7 @@ export function patchCustomSchemeSource(source) {
 
 function createArchiveStreams({
   sourceAsarPath,
+  sourceUnpackedPath,
   header,
   dataOffset,
   replacementPath,
@@ -134,7 +135,7 @@ function createArchiveStreams({
           ? () =>
               createReadStream(
                 path.join(
-                  `${sourceAsarPath}.unpacked`,
+                  sourceUnpackedPath,
                   ...archivePath.split("/"),
                 ),
               )
@@ -224,6 +225,7 @@ async function rewriteHeaderWithOriginalExecutableFlags({
 
 export async function buildPatchedAsar({
   sourceAsarPath,
+  sourceUnpackedPath = `${sourceAsarPath}.unpacked`,
   outputAsarPath,
   customSchemePath,
   expectedCustomSchemeSha256,
@@ -250,6 +252,7 @@ export async function buildPatchedAsar({
   );
   const streams = createArchiveStreams({
     sourceAsarPath,
+    sourceUnpackedPath,
     header,
     dataOffset,
     replacementPath: customSchemePath,

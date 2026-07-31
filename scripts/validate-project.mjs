@@ -74,7 +74,7 @@ for (const target of compatibility.targets) {
     `${key} 的 uiBundleSize 无效。`,
   );
 }
-assert(dictionary.schemaVersion === 1, "翻译词典版本错误。");
+assert(dictionary.schemaVersion === 2, "翻译词典版本错误。");
 assert(
   Object.keys(dictionary.exact).length >= 200,
   "翻译词典数量异常。",
@@ -97,6 +97,40 @@ assert(
   ),
   "翻译词典存在连续映射，可能触发重复观察。",
 );
+assert(Array.isArray(dictionary.patterns), "动态翻译规则格式错误。");
+assert(dictionary.patterns.length >= 1, "动态翻译规则为空。");
+assert(
+  dictionary.patterns.every(
+    (pattern) =>
+      pattern &&
+      typeof pattern.source === "string" &&
+      pattern.source.startsWith("^") &&
+      pattern.source.endsWith("$") &&
+      typeof pattern.target === "string" &&
+      pattern.target.length > 0 &&
+      pattern.flags === "u" &&
+      !/[\u3400-\u9fff]/u.test(pattern.source) &&
+      /[\u3400-\u9fff]/u.test(pattern.target),
+  ),
+  "动态翻译规则包含无效或范围过宽的映射。",
+);
+assert(
+  new Set(dictionary.patterns.map((pattern) => pattern.source)).size ===
+    dictionary.patterns.length,
+  "动态翻译规则包含重复源表达式。",
+);
+for (const pattern of dictionary.patterns) {
+  let regex;
+  try {
+    regex = new RegExp(pattern.source, pattern.flags);
+  } catch {
+    throw new Error(`动态翻译规则无法编译：${pattern.source}`);
+  }
+  assert(
+    !regex.test(pattern.target),
+    `动态翻译规则会重复匹配译文：${pattern.source}`,
+  );
+}
 assert(
   packageJson.dependencies["@electron/asar"] === "4.2.1",
   "ASAR 工具版本没有锁定。",
@@ -215,6 +249,8 @@ for (const moduleFile of moduleFiles) {
 }
 
 console.log(`兼容目标: ${compatibility.targets.length}`);
-console.log(`DOM 翻译: ${Object.keys(dictionary.exact).length}`);
+console.log(
+  `DOM 翻译: ${Object.keys(dictionary.exact).length} 条精确规则 + ${dictionary.patterns.length} 条动态规则`,
+);
 console.log(`JavaScript 模块语法检查: ${moduleFiles.length}`);
 console.log("项目结构验证通过。");

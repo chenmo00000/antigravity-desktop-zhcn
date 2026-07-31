@@ -4,14 +4,24 @@ import {
   countBundleDictionaryHits,
   createLocalizedBundle,
   createRuntimeOverlay,
+  loadDomTranslations,
+  translateDictionaryValue,
 } from "../src/lib/translator.mjs";
 
 const dictionary = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   exact: {
     Settings: "设置",
     "New Conversation": "新建对话",
   },
+  patterns: [
+    {
+      source:
+        "^Quota refreshes in ([0-9]+) hours?, ([0-9]+) minutes?\\.$",
+      target: "额度将在 $1 小时 $2 分钟后恢复。",
+      flags: "u",
+    },
+  ],
 };
 
 test("runtime overlay keeps the original bundle unchanged", () => {
@@ -25,6 +35,7 @@ test("runtime overlay keeps the original bundle unchanged", () => {
   assert.ok(output.startsWith(source.toString("utf8")));
   assert.match(output, /const state = "Settings"/);
   assert.match(output, /exactTranslations/);
+  assert.match(output, /patternTranslations/);
   assert.equal(localized.coverage.hits, 2);
 });
 
@@ -32,6 +43,8 @@ test("runtime overlay excludes editors and code-like regions", () => {
   const overlay = createRuntimeOverlay(dictionary);
   assert.match(overlay, /contenteditable/);
   assert.match(overlay, /monaco-editor/);
+  assert.match(overlay, /blockedAttributeSelector/);
+  assert.match(overlay, /isAttributeBlocked/);
   assert.match(overlay, /Node\.TEXT_NODE/);
 });
 
@@ -40,4 +53,70 @@ test("dictionary hit count is deterministic", () => {
     countBundleDictionaryHits("Settings only", dictionary),
     { hits: 1, total: 2 },
   );
+});
+
+test("dictionary translation supports exact and narrowly scoped dynamic text", () => {
+  assert.equal(translateDictionaryValue("  Settings  ", dictionary), "  设置  ");
+  assert.equal(
+    translateDictionaryValue("Quota refreshes in 2 hours, 3 minutes.", dictionary),
+    "额度将在 2 小时 3 分钟后恢复。",
+  );
+  assert.equal(translateDictionaryValue("Quota refreshes tomorrow.", dictionary), null);
+});
+
+test("Antigravity 2.4.3 settings and usage strings are covered", async () => {
+  const current = await loadDomTranslations();
+  const visibleStrings = [
+    "Models & Usage",
+    "Manage your model quota and credits.",
+    "Plan",
+    "You can upgrade to a Google AI Ultra plan to receive higher rate limits.",
+    "Model Credits",
+    "Enable AI Credit Overages",
+    "When toggled on, Antigravity will use your AI credits to fulfill model requests once you're out of model quota. Antigravity will always use your model quota first before using AI credits.",
+    "Gemini Models",
+    "Weekly Limit",
+    "You have used some of your weekly limit, it will fully refresh in 2 days, 23 hours.",
+    "Five Hour Limit",
+    "Claude and GPT models",
+    "Configure agent execution, queued message delivery, and permissions.",
+    "Execution",
+    "Queued Messages",
+    "Configure when follow-up messages are sent.",
+    "Keyboard shortcuts",
+    "Queue After Turn",
+    "Send Immediately",
+    "Verbose Agent Chat",
+    "Display and preserve intermediate thinking steps.",
+    "Conversation Width",
+    "Configure the maximum width of the conversation panel.",
+    "Default",
+    "Open IDE",
+    "Message input",
+    "Ask anything, @ to mention, / for actions",
+    "Add context",
+    "Select model, current: Gemini 3.6 Flash (High)",
+    "Gemini 3.6 Flash (High)",
+    "Record voice memo",
+    "Send message",
+    "Select Agent",
+    "Main Agent",
+    "Display Options",
+    "Project options",
+    "New Conversation in Project",
+    "Typeahead menu",
+    "Always Ask",
+    "File Permissions",
+    "Network Permissions",
+    "Terminal & Tooling Permissions",
+    "Dark",
+    "Light",
+    "System",
+  ];
+
+  for (const source of visibleStrings) {
+    const translated = translateDictionaryValue(source, current);
+    assert.ok(translated, `missing screenshot translation: ${source}`);
+    assert.match(translated, /[\u3400-\u9fff]/u, `translation is not Chinese: ${source}`);
+  }
 });

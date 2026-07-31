@@ -9,6 +9,15 @@ const execFileAsync = promisify(execFile);
 
 export const projectRoot = path.resolve(currentDirectory, "..", "..");
 
+export function areSamePaths(left, right, platform = process.platform) {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  const normalizedLeft = path.normalize(path.resolve(left));
+  const normalizedRight = path.normalize(path.resolve(right));
+  return platform === "win32"
+    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
+    : normalizedLeft === normalizedRight;
+}
+
 export const installRootSourceLabels = Object.freeze({
   environment: "环境变量 AGY_INSTALL_PATH",
   process: "正在运行的 Antigravity Desktop",

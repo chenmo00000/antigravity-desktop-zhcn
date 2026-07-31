@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "source": "kakarotto-baroko/antigravity-2.0-zhcn scripts/translate_ui.py",
   "sourceLicense": "MIT",
-  "strategy": "DOM text and selected attribute exact matches; application state values are not modified.",
+  "strategy": "DOM text and selected attribute exact matches plus narrowly scoped dynamic text patterns; application state values are not modified.",
   "exact": {
     ", / for actions": "，输入 / 执行操作",
     ". Local permissions have higher priority.": "。本地权限具有更高优先级。",
@@ -283,7 +283,127 @@
     "Workspaces": "工作区",
     "You can upgrade to a Google AI Ultra plan to receive the highest rate limits.": "你可以升级到 Google AI Ultra 套餐，以获得最高的速率限制。",
     "Your Plan:": "当前套餐：",
+    "Claude and GPT models": "Claude 和 GPT 模型",
+    "Configure agent execution, queued message delivery, and permissions.": "配置智能体执行、消息排队发送和权限。",
+    "Configure the maximum width of the conversation panel.": "配置对话面板的最大宽度。",
+    "Configure when follow-up messages are sent.": "配置后续消息的发送时机。",
+    "Conversation Width": "对话宽度",
+    "Default": "默认",
+    "Display and preserve intermediate thinking steps.": "显示并保留中间思考步骤。",
+    "Enable AI Credit Overages": "允许超额使用 AI 点数",
+    "Execution": "执行",
+    "Five Hour Limit": "五小时额度",
+    "Gemini Models": "Gemini 模型",
+    "Keyboard shortcuts": "快捷键",
+    "Manage your model quota and credits.": "管理你的模型额度和 AI 点数。",
+    "Model Credits": "AI 点数",
+    "Model Quota": "模型额度",
+    "Models & Usage": "模型与用量",
+    "Narrow": "窄",
+    "No quota information available.": "暂无额度信息。",
+    "Plan": "套餐",
+    "Queue After Turn": "本轮结束后排队",
+    "Queued Messages": "排队消息",
+    "Refresh quota and credits data": "刷新额度和点数数据",
+    "See Activity": "查看记录",
+    "Send Immediately": "立即发送",
+    "Verbose Agent Chat": "详细智能体对话",
+    "Weekly Limit": "每周额度",
+    "Wide": "宽",
+    "You can upgrade to a Google AI Ultra plan to receive higher rate limits.": "你可以升级到 Google AI Ultra 套餐，以获得更高的速率限制。",
+    "Add context": "添加上下文",
+    "Always Ask": "始终询问",
+    "Ask anything, @ to mention, / for actions": "问任何问题，输入 @ 提及，输入 / 执行操作",
+    "Dark": "深色",
+    "Display Options": "显示选项",
+    "File Permissions": "文件权限",
+    "Light": "浅色",
+    "Main Agent": "主智能体",
+    "Message input": "消息输入框",
+    "Network Permissions": "网络权限",
+    "New Conversation in Project": "在项目中新建对话",
+    "Open IDE": "打开 IDE",
+    "Project options": "项目选项",
+    "Record voice memo": "录制语音备忘",
+    "Select Agent": "选择智能体",
+    "Send message": "发送消息",
+    "Show suggestions when typing in the editor": "在编辑器中输入时显示建议",
+    "System": "跟随系统",
+    "Terminal & Tooling Permissions": "终端与工具权限",
+    "Typeahead menu": "输入建议菜单",
     "Zoom In": "放大",
     "Zoom Out": "缩小"
-  }
+  },
+  "patterns": [
+    {
+      "source": "^Available AI Credits: (.+)$",
+      "target": "可用 AI 点数：$1",
+      "flags": "u"
+    },
+    {
+      "source": "^When toggled on, (.+) will use your AI credits to fulfill model requests once you're out of model quota\\. \\1 will always use your model quota first before using AI credits\\.$",
+      "target": "$1 会在模型额度用尽后使用你的 AI 点数完成模型请求，并始终优先使用模型额度。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your weekly limit, it will fully refresh in ([0-9]+) days?, ([0-9]+) hours?\\.$",
+      "target": "你已使用部分每周额度，将在 $1 天 $2 小时后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your weekly limit, it will fully refresh in ([0-9]+) hours?, ([0-9]+) minutes?\\.$",
+      "target": "你已使用部分每周额度，将在 $1 小时 $2 分钟后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your weekly limit, it will fully refresh in ([0-9]+) days?\\.$",
+      "target": "你已使用部分每周额度，将在 $1 天后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your weekly limit, it will fully refresh in ([0-9]+) hours?\\.$",
+      "target": "你已使用部分每周额度，将在 $1 小时后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your weekly limit, it will fully refresh in ([0-9]+) minutes?\\.$",
+      "target": "你已使用部分每周额度，将在 $1 分钟后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your five hour limit, it will fully refresh in ([0-9]+) hours?, ([0-9]+) minutes?\\.$",
+      "target": "你已使用部分五小时额度，将在 $1 小时 $2 分钟后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your five hour limit, it will fully refresh in ([0-9]+) hours?\\.$",
+      "target": "你已使用部分五小时额度，将在 $1 小时后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^You have used some of your five hour limit, it will fully refresh in ([0-9]+) minutes?\\.$",
+      "target": "你已使用部分五小时额度，将在 $1 分钟后完全恢复。",
+      "flags": "u"
+    },
+    {
+      "source": "^Select model, current: (.+)$",
+      "target": "选择模型，当前：$1",
+      "flags": "u"
+    },
+    {
+      "source": "^(.+) \\(High\\)$",
+      "target": "$1（高）",
+      "flags": "u"
+    },
+    {
+      "source": "^(.+) \\(Medium\\)$",
+      "target": "$1（中）",
+      "flags": "u"
+    },
+    {
+      "source": "^(.+) \\(Low\\)$",
+      "target": "$1（低）",
+      "flags": "u"
+    }
+  ]
 }

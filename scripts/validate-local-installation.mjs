@@ -1,9 +1,14 @@
 import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { inspectInstallation } from "../src/lib/installation.mjs";
+import {
+  inspectInstallation,
+  loadCompatibilityManifest,
+} from "../src/lib/installation.mjs";
 import { buildPatchedAsar } from "../src/lib/patcher.mjs";
 import { readAsarHeader } from "../src/lib/asar-reader.mjs";
-import { projectRoot } from "../src/lib/paths.mjs";
+import { areSamePaths, projectRoot } from "../src/lib/paths.mjs";
+import { sha256File } from "../src/lib/hash.mjs";
+import { readInstallState } from "../src/lib/state.mjs";
 
 function flattenHeader(header) {
   const entries = new Map();
@@ -60,7 +65,38 @@ function summarize(entries) {
 }
 
 const inspection = await inspectInstallation();
-if (!inspection.target) {
+let sourceAsarPath = inspection.appAsarPath;
+let target = inspection.target;
+
+if (!target) {
+  const state = await readInstallState();
+  if (
+    state?.status === "installed" &&
+    areSamePaths(state.installRoot, inspection.installRoot) &&
+    state.appVersion === inspection.packageVersion &&
+    state.patchedAsarSha256 === inspection.appAsarSha256
+  ) {
+    const backupHash = await sha256File(state.backupPath).catch(() => null);
+    const manifest = await loadCompatibilityManifest();
+    target =
+      manifest.targets.find(
+        (candidate) =>
+          candidate.platform === process.platform &&
+          candidate.arch === process.arch &&
+          candidate.appVersion === state.appVersion &&
+          candidate.appAsarSha256 === state.originalAsarSha256 &&
+          candidate.customSchemeSha256 === state.originalCustomSchemeSha256,
+      ) ?? null;
+    if (target && backupHash === target.appAsarSha256) {
+      sourceAsarPath = state.backupPath;
+      console.log("检测到已安装汉化，使用已验证的原版备份构建验证副本。");
+    } else {
+      target = null;
+    }
+  }
+}
+
+if (!target) {
   throw new Error("本机安装未通过兼容性白名单，不能构建验证副本。");
 }
 
@@ -76,14 +112,15 @@ await rm(outputAsarPath, { force: true });
 await rm(`${outputAsarPath}.unpacked`, { recursive: true, force: true });
 
 const built = await buildPatchedAsar({
-  sourceAsarPath: inspection.appAsarPath,
+  sourceAsarPath,
+  sourceUnpackedPath: `${inspection.appAsarPath}.unpacked`,
   outputAsarPath,
-  customSchemePath: inspection.target.customSchemePath,
-  expectedCustomSchemeSha256: inspection.target.customSchemeSha256,
+  customSchemePath: target.customSchemePath,
+  expectedCustomSchemeSha256: target.customSchemeSha256,
 });
 
 const originalEntries = flattenHeader(
-  (await readAsarHeader(inspection.appAsarPath)).header,
+  (await readAsarHeader(sourceAsarPath)).header,
 );
 const patchedEntries = flattenHeader((await readAsarHeader(outputAsarPath)).header);
 
@@ -98,7 +135,7 @@ for (const [archivePath, original] of originalEntries) {
   if (!patched) {
     throw new Error(`新 ASAR 缺少条目：${archivePath}`);
   }
-  if (archivePath === inspection.target.customSchemePath) {
+  if (archivePath === target.customSchemePath) {
     if (
       original.type !== patched.type ||
       original.unpacked !== patched.unpacked ||

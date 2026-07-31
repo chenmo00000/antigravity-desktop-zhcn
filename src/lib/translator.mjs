@@ -6,10 +6,55 @@ import { sha256Buffer } from "./hash.mjs";
 export async function loadDomTranslations() {
   const filePath = path.join(projectRoot, "config", "dom-translations.json");
   const data = JSON.parse(await readFile(filePath, "utf8"));
-  if (data.schemaVersion !== 1 || !data.exact || typeof data.exact !== "object") {
+  if (
+    data.schemaVersion !== 2 ||
+    !data.exact ||
+    typeof data.exact !== "object" ||
+    !Array.isArray(data.patterns)
+  ) {
     throw new Error("DOM 翻译词典格式无效。");
   }
+  for (const pattern of data.patterns) {
+    if (
+      !pattern ||
+      typeof pattern.source !== "string" ||
+      typeof pattern.target !== "string" ||
+      typeof pattern.flags !== "string"
+    ) {
+      throw new Error("DOM 动态翻译规则格式无效。");
+    }
+    try {
+      new RegExp(pattern.source, pattern.flags);
+    } catch {
+      throw new Error(`DOM 动态翻译规则无效：${pattern.source}`);
+    }
+  }
   return data;
+}
+
+function compilePatternTranslations(dictionary) {
+  return (dictionary.patterns ?? []).map(({ source, target, flags = "u" }) => ({
+    regex: new RegExp(source, flags),
+    target,
+  }));
+}
+
+export function translateDictionaryValue(value, dictionary) {
+  if (typeof value !== "string" || value.length === 0) return null;
+  const leading = value.match(/^\s*/u)?.[0] ?? "";
+  const trailing = value.match(/\s*$/u)?.[0] ?? "";
+  const coreEnd = value.length - trailing.length;
+  const core = value.slice(leading.length, coreEnd);
+  const exact = dictionary.exact[core];
+  if (exact !== undefined) return leading + exact + trailing;
+
+  for (const { regex, target } of compilePatternTranslations(dictionary)) {
+    regex.lastIndex = 0;
+    if (!regex.test(core)) continue;
+    regex.lastIndex = 0;
+    return leading + core.replace(regex, target) + trailing;
+  }
+  return null;
 }
 
 export function countBundleDictionaryHits(bundleText, dictionary) {
@@ -27,10 +72,15 @@ export function countBundleDictionaryHits(bundleText, dictionary) {
 
 export function createRuntimeOverlay(dictionary) {
   const serialized = JSON.stringify(dictionary.exact);
+  const serializedPatterns = JSON.stringify(dictionary.patterns ?? []);
   return `
 ;(() => {
   "use strict";
   const exactTranslations = new Map(Object.entries(${serialized}));
+  const patternTranslations = ${serializedPatterns}.map(({ source, target, flags }) => ({
+    regex: new RegExp(source, flags),
+    target
+  }));
   const blockedSelector = [
     "script",
     "style",
@@ -42,11 +92,19 @@ export function createRuntimeOverlay(dictionary) {
     "[data-lexical-editor='true']",
     ".monaco-editor"
   ].join(",");
+  const blockedAttributeSelector = [
+    "script",
+    "style",
+    "code",
+    "pre",
+    ".monaco-editor"
+  ].join(",");
   const translatedAttributes = ["aria-label", "title", "placeholder"];
   const pendingRoots = new Set();
   let scheduled = false;
   const stats = {
     dictionarySize: exactTranslations.size,
+    patternCount: patternTranslations.length,
     translatedTextNodes: 0,
     translatedAttributes: 0
   };
@@ -55,14 +113,25 @@ export function createRuntimeOverlay(dictionary) {
     return Boolean(element?.closest?.(blockedSelector));
   }
 
+  function isAttributeBlocked(element) {
+    return Boolean(element?.closest?.(blockedAttributeSelector));
+  }
+
   function translateValue(value) {
     if (typeof value !== "string" || value.length === 0) return null;
     const leading = value.match(/^\\s*/u)?.[0] ?? "";
     const trailing = value.match(/\\s*$/u)?.[0] ?? "";
     const coreEnd = value.length - trailing.length;
     const core = value.slice(leading.length, coreEnd);
-    const translated = exactTranslations.get(core);
-    return translated ? leading + translated + trailing : null;
+    const exact = exactTranslations.get(core);
+    if (exact !== undefined) return leading + exact + trailing;
+    for (const { regex, target } of patternTranslations) {
+      regex.lastIndex = 0;
+      if (!regex.test(core)) continue;
+      regex.lastIndex = 0;
+      return leading + core.replace(regex, target) + trailing;
+    }
+    return null;
   }
 
   function translateTextNode(node) {
@@ -76,7 +145,7 @@ export function createRuntimeOverlay(dictionary) {
   }
 
   function translateElementAttributes(element) {
-    if (isBlocked(element)) return;
+    if (isAttributeBlocked(element)) return;
     for (const attribute of translatedAttributes) {
       if (!element.hasAttribute(attribute)) continue;
       const current = element.getAttribute(attribute);
@@ -150,7 +219,7 @@ export function createRuntimeOverlay(dictionary) {
       attributeFilter: translatedAttributes
     });
     globalThis.__AGY_ZHCN__ = Object.freeze({
-      version: "0.1.0",
+      version: "0.1.1",
       strategy: "dom-overlay",
       stats
     });

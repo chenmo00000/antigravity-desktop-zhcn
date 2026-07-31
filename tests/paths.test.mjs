@@ -3,7 +3,22 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { resolveInstallRoot } from "../src/lib/paths.mjs";
+import { areSamePaths, resolveInstallRoot } from "../src/lib/paths.mjs";
+
+test("Windows install path comparison ignores case and redundant segments", () => {
+  assert.equal(
+    areSamePaths(
+      "C:\\Users\\TestUser\\AppData\\Local\\Programs\\antigravity",
+      "c:\\users\\testuser\\appdata\\local\\programs\\antigravity\\.",
+      "win32",
+    ),
+    true,
+  );
+  assert.equal(
+    areSamePaths("C:\\Apps\\Antigravity", "C:\\Apps\\AntigravityIDE", "win32"),
+    false,
+  );
+});
 
 async function createDesktopInstall(installRoot) {
   await mkdir(path.join(installRoot, "resources"), { recursive: true });
