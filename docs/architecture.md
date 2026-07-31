@@ -13,11 +13,12 @@
 ## 模块职责
 
 - `asar-reader.mjs`：只读 ASAR 头和内部文件，不依赖第三方包。
-- `installation.mjs`：安装路径、版本和静态指纹识别。
+- `installation.mjs`：合并按版本拆分的兼容配置，并完成安装路径、版本和静态指纹识别。
 - `runtime-bundle.mjs`：只访问 Antigravity 日志里声明的本机 HTTPS UI 端口。
 - `compatibility-candidate.mjs`：采集未验证的新版本候选指纹，不写白名单。
 - `cleanup.mjs`：限定边界地清理可再生成文件，永不触碰备份。
 - `diagnostics.mjs`：把常见失败转换成用户建议，并写入本地错误日志。
+- `release-notes.mjs`：从兼容配置生成去重后的 GitHub Release 支持版本说明。
 - `translator.mjs`：追加 DOM 覆盖层，不改写原 bundle 程序逻辑。
 - `patcher.mjs`：严格锚点补丁、临时构建、原子替换。
 - `state.mjs`：保存可验证的安装/恢复状态。

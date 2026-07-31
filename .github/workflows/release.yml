@@ -37,6 +37,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $releaseNotes = (& node scripts/generate-release-notes.mjs) -join "`n"
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseNotes)) {
+            throw "Release 兼容版本说明生成失败。"
+          }
           $artifacts = Get-ChildItem -LiteralPath .runtime/release -File |
             Where-Object { $_.Extension -eq '.zip' -or $_.Name.EndsWith('.sha256') } |
             Select-Object -ExpandProperty FullName
@@ -44,7 +48,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:GITHUB_REF_NAME @artifacts --clobber
           } else {
-            gh release create $env:GITHUB_REF_NAME @artifacts --generate-notes --title $env:GITHUB_REF_NAME
+            gh release create $env:GITHUB_REF_NAME @artifacts --generate-notes --notes $releaseNotes --title $env:GITHUB_REF_NAME
           }
           if ($LASTEXITCODE -ne 0) {
             throw "GitHub Release 发布失败。"

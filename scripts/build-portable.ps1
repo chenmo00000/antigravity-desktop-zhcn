@@ -94,7 +94,6 @@ try {
         "src",
         "config",
         "docs",
-        "licenses",
         "node_modules",
         "scripts",
         ".github"
@@ -110,7 +109,6 @@ try {
         "完全卸载.bat",
         "README.md",
         "LICENSE",
-        "THIRD_PARTY_NOTICES.md",
         "package.json",
         "package-lock.json"
     )) {

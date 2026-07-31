@@ -106,4 +106,6 @@ console.log(`app.asar SHA256: ${target.appAsarSha256}`);
 console.log(`customScheme SHA256: ${target.customSchemeSha256}`);
 console.log(`运行时 UI SHA256: ${target.uiBundleSha256}`);
 console.log(`候选文件: ${outputPath}`);
-console.log("注意：候选尚未验证，不会自动修改 config/compatibility.json。");
+console.log(
+  `注意：候选尚未验证，不会自动修改 config/compatibility/${target.appVersion}/${target.platform}-${target.arch}.json。`,
+);

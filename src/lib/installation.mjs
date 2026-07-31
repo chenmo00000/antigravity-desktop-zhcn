@@ -1,17 +1,87 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { constants } from "node:fs";
 import { readFileFromAsar, readJsonFromAsar } from "./asar-reader.mjs";
 import { sha256Buffer, sha256File } from "./hash.mjs";
 import { projectRoot, resolveInstallRoot } from "./paths.mjs";
 
-export async function loadCompatibilityManifest() {
-  const filePath = path.join(projectRoot, "config", "compatibility.json");
-  const manifest = JSON.parse(await readFile(filePath, "utf8"));
-  if (manifest.schemaVersion !== 1 || !Array.isArray(manifest.targets)) {
-    throw new Error("兼容性清单格式无效。");
+export async function loadCompatibilityManifest({
+  rootDirectory = path.join(projectRoot, "config", "compatibility"),
+} = {}) {
+  const rootEntries = await readdir(rootDirectory, { withFileTypes: true });
+  const versionDirectories = rootEntries
+    .filter((entry) => entry.isDirectory())
+    .sort((left, right) =>
+      right.name.localeCompare(left.name, undefined, { numeric: true }),
+    );
+  if (versionDirectories.length === 0) {
+    throw new Error("兼容性配置目录中没有版本。");
   }
-  return manifest;
+
+  const targets = [];
+  for (const versionDirectory of versionDirectories) {
+    if (!/^\d+\.\d+\.\d+$/.test(versionDirectory.name)) {
+      throw new Error(`兼容性版本目录名称无效：${versionDirectory.name}`);
+    }
+
+    const directoryPath = path.join(rootDirectory, versionDirectory.name);
+    const shardFiles = (await readdir(directoryPath, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .sort((left, right) => left.name.localeCompare(right.name));
+    if (shardFiles.length === 0) {
+      throw new Error(`兼容性版本目录没有 JSON 配置：${versionDirectory.name}`);
+    }
+
+    for (const shardFile of shardFiles) {
+      const filePath = path.join(directoryPath, shardFile.name);
+      let shard;
+      try {
+        shard = JSON.parse(await readFile(filePath, "utf8"));
+      } catch (error) {
+        throw new Error(`兼容性配置无法读取：${filePath}`, { cause: error });
+      }
+      if (
+        shard.schemaVersion !== 1 ||
+        shard.appVersion !== versionDirectory.name ||
+        !Array.isArray(shard.targets) ||
+        shard.targets.length === 0 ||
+        shard.targets.some(
+          (target) => target.appVersion !== versionDirectory.name,
+        )
+      ) {
+        throw new Error(`兼容性配置格式无效：${filePath}`);
+      }
+      targets.push(...shard.targets);
+    }
+  }
+
+  return { schemaVersion: 1, targets };
+}
+
+export function getVersionTargets(
+  targets,
+  { platform, arch, appVersion },
+) {
+  return targets.filter(
+    (target) =>
+      target.platform === platform &&
+      target.arch === arch &&
+      target.appVersion === appVersion,
+  );
+}
+
+export function findCompatibilityTarget(
+  versionTargets,
+  { appAsarSha256, customSchemes },
+) {
+  return (
+    versionTargets.find(
+      (candidate) =>
+        candidate.appAsarSha256 === appAsarSha256 &&
+        customSchemes[candidate.customSchemePath]?.sha256 ===
+          candidate.customSchemeSha256,
+    ) ?? null
+  );
 }
 
 export async function inspectInstallation() {
@@ -28,11 +98,23 @@ export async function inspectInstallation() {
 
   const packageJson = await readJsonFromAsar(appAsarPath, "package.json");
   const manifest = await loadCompatibilityManifest();
-  const versionTargets = manifest.targets.filter(
-    (target) =>
-      target.platform === process.platform &&
-      target.arch === process.arch &&
-      target.appVersion === packageJson.version,
+  const versionTargets = getVersionTargets(manifest.targets, {
+    platform: process.platform,
+    arch: process.arch,
+    appVersion: packageJson.version,
+  });
+  const supportedVersions = [
+    ...new Set(
+      manifest.targets
+        .filter(
+          (target) =>
+            target.platform === process.platform &&
+            target.arch === process.arch,
+        )
+        .map((target) => target.appVersion),
+    ),
+  ].sort((left, right) =>
+    right.localeCompare(left, undefined, { numeric: true }),
   );
 
   const appAsarSha256 = await sha256File(appAsarPath);
@@ -41,20 +123,22 @@ export async function inspectInstallation() {
   ];
   const customSchemes = {};
   for (const customSchemePath of customSchemePaths) {
-    const buffer = await readFileFromAsar(appAsarPath, customSchemePath);
-    customSchemes[customSchemePath] = {
-      buffer,
-      sha256: sha256Buffer(buffer),
-    };
+    try {
+      const buffer = await readFileFromAsar(appAsarPath, customSchemePath);
+      customSchemes[customSchemePath] = {
+        buffer,
+        sha256: sha256Buffer(buffer),
+      };
+    } catch {
+      // Different official builds of one version may use different entry paths.
+      customSchemes[customSchemePath] = null;
+    }
   }
 
-  const target =
-    versionTargets.find(
-      (candidate) =>
-        candidate.appAsarSha256 === appAsarSha256 &&
-        customSchemes[candidate.customSchemePath]?.sha256 ===
-          candidate.customSchemeSha256,
-    ) ?? null;
+  const target = findCompatibilityTarget(versionTargets, {
+    appAsarSha256,
+    customSchemes,
+  });
 
   return {
     installRoot,
@@ -67,5 +151,7 @@ export async function inspectInstallation() {
     customSchemes,
     target,
     versionKnown: versionTargets.length > 0,
+    compatibleBuildCount: versionTargets.length,
+    supportedVersions,
   };
 }

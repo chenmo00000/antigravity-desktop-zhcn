@@ -10,10 +10,11 @@ test("diagnostics explains runtime UI failures", () => {
 });
 
 test("diagnostics explains unsupported versions", () => {
-  assert.match(
-    getErrorAdvice(new Error("当前安装文件不在兼容性白名单中")),
-    /不能安全安装/,
+  const advice = getErrorAdvice(
+    new Error("当前安装文件不在兼容性白名单中"),
   );
+  assert.match(advice, /不能安全安装/);
+  assert.match(advice, /releases\/latest/);
 });
 
 test("diagnostics keeps a safe fallback", () => {

@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { patchCustomSchemeSource } from "../src/lib/patcher.mjs";
+import { loadCompatibilityManifest } from "../src/lib/installation.mjs";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -35,9 +36,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const compatibility = JSON.parse(
-  await readFile(path.join(projectRoot, "config", "compatibility.json"), "utf8"),
-);
+const compatibility = await loadCompatibilityManifest();
 const dictionary = JSON.parse(
   await readFile(path.join(projectRoot, "config", "dom-translations.json"), "utf8"),
 );
@@ -52,12 +51,13 @@ assert(compatibility.schemaVersion === 1, "兼容性清单版本错误。");
 assert(compatibility.targets.length >= 1, "兼容性清单没有目标版本。");
 const targetKeys = new Set();
 for (const target of compatibility.targets) {
-  const key = `${target.platform}/${target.arch}/${target.appVersion}`;
-  assert(!targetKeys.has(key), `兼容性清单存在重复目标：${key}`);
+  const versionKey = `${target.platform}/${target.arch}/${target.appVersion}`;
+  const key = `${versionKey}/${target.appAsarSha256}`;
+  assert(!targetKeys.has(key), `兼容性清单存在重复构建：${key}`);
   targetKeys.add(key);
   assert(
     target.packageVersion === target.appVersion,
-    `${key} 的 packageVersion 与 appVersion 不一致。`,
+    `${versionKey} 的 packageVersion 与 appVersion 不一致。`,
   );
   for (const hashField of [
     "appAsarSha256",
@@ -66,12 +66,12 @@ for (const target of compatibility.targets) {
   ]) {
     assert(
       /^[A-F0-9]{64}$/.test(target[hashField]),
-      `${key} 的 ${hashField} 格式无效。`,
+      `${versionKey} 的 ${hashField} 格式无效。`,
     );
   }
   assert(
     Number.isSafeInteger(target.uiBundleSize) && target.uiBundleSize > 0,
-    `${key} 的 uiBundleSize 无效。`,
+    `${versionKey} 的 uiBundleSize 无效。`,
   );
 }
 assert(dictionary.schemaVersion === 2, "翻译词典版本错误。");
@@ -194,6 +194,11 @@ assert(
   "缺少兼容性候选采集命令。",
 );
 assert(
+  packageJson.scripts["release:notes"] ===
+    "node scripts/generate-release-notes.mjs",
+  "缺少 Release 兼容版本说明生成命令。",
+);
+assert(
   packageJson.scripts["build:portable"]?.includes("build-portable.ps1"),
   "缺少便携发布包构建命令。",
 );
@@ -223,6 +228,15 @@ for (const workflow of ["ci.yml", "release.yml"]) {
   assert(content.includes("npm test"), `${workflow} 未运行单元测试。`);
   assert(content.includes("npm run validate"), `${workflow} 未运行项目校验。`);
 }
+const releaseWorkflow = await readFile(
+  path.join(projectRoot, ".github", "workflows", "release.yml"),
+  "utf8",
+);
+assert(
+  releaseWorkflow.includes("generate-release-notes.mjs") &&
+    releaseWorkflow.includes("--notes $releaseNotes"),
+  "Release 工作流没有自动附加兼容版本说明。",
+);
 
 const portableScript = await readFile(
   path.join(projectRoot, "scripts", "build-portable.ps1"),

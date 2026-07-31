@@ -6,6 +6,14 @@
 项目采用严格版本和文件指纹白名单；遇到未知版本、未知 `app.asar`、未知 UI bundle
 或异常备份时会停止，不会尝试“强行兼容”。
 
+所有已验证版本都包含在同一个 portable ZIP 中。用户只需下载最新版，工具会自动
+识别本机版本和具体构建指纹，不需要按 Antigravity 版本选择分支或安装包。同一个
+版本号如果存在多个官方构建，也可以分别登记并精确匹配。
+
+仓库内部的兼容规则按
+`config/compatibility/<客户端版本>/<平台>-<架构>.json` 组织；这种拆分只用于维护，
+不会改变普通用户的一键使用流程。
+
 ## 普通用户怎么用
 
 发布到 GitHub 后，普通用户建议下载 Releases 中的
@@ -46,6 +54,9 @@
 
 使用历史版本时，建议先把 Antigravity 的更新模式设为手动或关闭，避免客户端自动
 升级后覆盖补丁。升级到未列出的版本后，应先重新运行兼容性检查。
+
+遇到尚未登记的版本或构建时，工具会显示最新版 Release 地址。下载最新版后仍然
+不支持，才需要把兼容性检查显示的版本和哈希信息提交给维护者。
 
 ## 安装目录怎么找到
 
@@ -117,6 +128,7 @@ npm run preview
 npm run cleanup
 npm run purge
 npm run collect:compatibility
+npm run release:notes
 npm run build:portable
 ```
 
@@ -136,5 +148,5 @@ npm run build:portable
 本项目只支持独立的 Antigravity Desktop，不支持 Antigravity IDE。
 
 项目不包含、不上传也不分发 Google 的安装包、`app.asar`、原始运行时 `main.js`
-或其他专有资源。首版中文词汇参考的第三方项目与许可见
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+或其他专有资源。本项目及中文词典均由社区独立研发和维护，不隶属于 Google，
+Antigravity、Google 及相关商标和软件权利归各自权利人所有。

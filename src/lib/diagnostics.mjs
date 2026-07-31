@@ -2,6 +2,9 @@ import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { getStateRoot } from "./paths.mjs";
 
+export const LATEST_RELEASE_URL =
+  "https://github.com/chenmo00000/antigravity-desktop-zhcn/releases/latest";
+
 const adviceRules = [
   {
     pattern: /AGY_INSTALL_PATH|未找到有效的 Antigravity Desktop 安装目录/,
@@ -14,8 +17,7 @@ const adviceRules = [
   },
   {
     pattern: /白名单|尚未登记|指纹不匹配|未通过兼容性检查/,
-    advice:
-      "当前客户端不能安全安装。请运行兼容性检查，并把版本与哈希信息提交给维护者。",
+    advice: `当前客户端不能安全安装。请先从 ${LATEST_RELEASE_URL} 下载最新版并重新检查；如果最新版仍不支持，再把版本与哈希信息提交给维护者。`,
   },
   {
     pattern: /EACCES|EPERM|resource busy|权限|拒绝访问/i,

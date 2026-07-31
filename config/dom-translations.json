@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "source": "kakarotto-baroko/antigravity-2.0-zhcn scripts/translate_ui.py",
-  "sourceLicense": "MIT",
+  "maintainer": "antigravity-desktop-zhcn contributors",
+  "license": "MIT",
   "strategy": "DOM text and selected attribute exact matches plus narrowly scoped dynamic text patterns; application state values are not modified.",
   "exact": {
     ", / for actions": "，输入 / 执行操作",

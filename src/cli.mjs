@@ -51,7 +51,11 @@ import {
   inspectPurgeTargets,
   removeCleanupTargets,
 } from "./lib/cleanup.mjs";
-import { getErrorAdvice, writeDiagnosticLog } from "./lib/diagnostics.mjs";
+import {
+  getErrorAdvice,
+  LATEST_RELEASE_URL,
+  writeDiagnosticLog,
+} from "./lib/diagnostics.mjs";
 
 const INSTALLED_BUNDLE_NAME = "agy_zhcn_ui_main.js";
 
@@ -70,9 +74,14 @@ function printStaticReport(inspection) {
     console.log(`customScheme SHA256: ${custom.sha256}`);
     console.log("静态兼容性: 通过");
   } else if (inspection.versionKnown) {
-    console.log("静态兼容性: 失败（版本已知，但安装文件指纹不同）");
+    console.log(
+      `静态兼容性: 失败（版本已登记 ${inspection.compatibleBuildCount} 个构建，但安装文件指纹不同）`,
+    );
+    console.log(`请先检查最新版: ${LATEST_RELEASE_URL}`);
   } else {
     console.log("静态兼容性: 失败（当前版本尚未登记）");
+    console.log(`本工具已登记版本: ${inspection.supportedVersions.join("、")}`);
+    console.log(`请先检查最新版: ${LATEST_RELEASE_URL}`);
   }
 }
 
