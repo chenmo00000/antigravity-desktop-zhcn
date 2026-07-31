@@ -1,0 +1,140 @@
+# Antigravity Desktop 中文汉化
+
+面向 Windows 版 Antigravity Desktop 的安全中文本地化工具。
+
+当前已验证 `Antigravity Desktop 2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
+项目采用严格版本和文件指纹白名单；遇到未知版本、未知 `app.asar`、未知 UI bundle
+或异常备份时会停止，不会尝试“强行兼容”。
+
+## 普通用户怎么用
+
+发布到 GitHub 后，普通用户建议下载 Releases 中的
+`antigravity-desktop-zhcn-portable-win-x64.zip`。完整解压后无需安装 Node.js，直接：
+
+1. 双击 `一键汉化.bat`；
+2. 工具自动检查环境、查找安装目录并核对版本与文件指纹；
+3. 如果需要运行时 UI，工具会自动打开 Antigravity，请等待主界面加载；
+4. 确认安装后，按提示彻底关闭 Antigravity；
+5. 工具自动备份、安装并复检，完成后重新打开客户端。
+
+工具不会自动结束 Antigravity 进程，也不会绕过未知版本或未知文件指纹。需要先做
+诊断时，可以运行 `一键检查兼容性.bat`；普通安装不再要求手动依次执行检查和预览。
+
+需要恢复时，彻底关闭 Antigravity，然后双击 `一键恢复英文.bat`。
+
+## 六个 BAT 的区别
+
+| 文件 | 是否修改客户端 | 用途 |
+| --- | --- | --- |
+| `一键检查兼容性.bat` | 否 | 检查版本、ASAR、补丁入口和运行时 UI 指纹 |
+| `生成汉化预览.bat` | 否 | 在 `.runtime` 生成并检查本地中文 UI |
+| `一键汉化.bat` | 是 | 备份原始 ASAR，安装验证过的补丁和中文 UI |
+| `一键恢复英文.bat` | 是 | 仅在版本与安装状态完全匹配时恢复原始备份 |
+| `清理缓存.bat` | 否 | 清理可再生成的预览、UI 缓存和遗留临时构建目录 |
+| `完全卸载.bat` | 是 | 必要时先恢复英文，再永久删除本工具的备份、状态、日志和缓存 |
+
+## 运行要求
+
+- Windows 10/11 x64
+- Antigravity Desktop 2.4.3、2.3.1、2.3.0 或 2.2.1
+- 使用 portable 发布包：无需另装 Node.js，安装过程无需下载 npm 依赖
+- 直接使用源码：需要 Node.js 22.12 或更高版本
+
+源码方式下，检查和生成预览不需要安装 npm 依赖。首次实际安装时，BAT 会自动执行
+`npm ci --ignore-scripts`，严格按照 `package-lock.json` 下载
+`@electron/asar@4.2.1`。portable 包已经内置锁定的 Node 和生产依赖。
+
+使用历史版本时，建议先把 Antigravity 的更新模式设为手动或关闭，避免客户端自动
+升级后覆盖补丁。升级到未列出的版本后，应先重新运行兼容性检查。
+
+## 安装目录怎么找到
+
+安装目录没有写死。工具会按以下顺序自动查找：
+
+1. 用户设置的 `AGY_INSTALL_PATH`；
+2. 正在运行的 `Antigravity.exe`；
+3. Windows 卸载注册表中的 Antigravity Desktop；
+4. `%LOCALAPPDATA%\Programs\Antigravity` 默认目录。
+
+每个候选目录都必须同时包含 `Antigravity.exe` 和 `resources\app.asar`，因此不会
+把 Antigravity IDE 当成 Desktop。发现多个同优先级的有效目录时，工具会停止并
+提示设置 `AGY_INSTALL_PATH`，不会随意选择。兼容性检查输出也会显示路径来源。
+
+## 出错与清理
+
+失败时会同时显示“错误原因”和“建议操作”。完整技术日志保存在
+`%LOCALAPPDATA%\AntigravityZhcn\logs\cli-errors.log`，便于提交 Issue。
+
+`清理缓存.bat` 在删除前会列出路径和大小，并要求确认。它只清理可以重新生成的
+预览、开发验证副本、运行时 UI 缓存、安装准备文件和中断遗留的临时构建目录，
+不会删除：
+
+- 原始 `app.asar` 备份；
+- 安装/恢复状态；
+- 已安装的中文 UI；
+- Antigravity 客户端或用户数据；
+- npm 全局缓存。
+
+彻底不再使用本工具时，运行 `完全卸载.bat`。它会先核验当前状态；如果汉化仍在
+使用，会先从已验证备份恢复英文，然后永久清除本工具的备份、状态、日志与缓存。
+删除前会列出具体路径和大小并要求确认。完成后，可手动删除解压出的工具文件夹。
+它不会删除 Antigravity 的账户、会话、设置或其他用户数据。
+
+## 汉化原理
+
+工具不会在压缩后的 React bundle 中批量替换英文，也不会修改 `"running"`、
+`"completed"` 等可能参与程序逻辑的状态值。
+
+安装后，Antigravity 仍加载经过指纹验证的原始 `main.js`，本项目只在文件末尾追加
+一个 DOM 中文覆盖层。覆盖层：
+
+- 只处理页面文本节点，以及 `aria-label`、`title`、`placeholder`；
+- 跳过代码、编辑器、输入框和 `contenteditable` 区域；
+- 通过 `MutationObserver` 处理后续渲染的界面；
+- 不修改请求参数、状态对象、模型返回内容或本地项目文件。
+
+为加载本地 UI，安装器会在验证过的 `dist/customScheme.js` 中注册
+`agy-zhcn://`，并只重定向 Antigravity 本地服务的 `/main.js`。
+
+## 安全与回滚
+
+- 支持版本、`app.asar`、`customScheme.js` 和运行时 UI 四重 SHA-256 校验。
+- 每次构建使用全新的系统临时目录，不复用旧解包目录。
+- 原始 `app.asar` 按版本和哈希保存在
+  `%LOCALAPPDATA%\AntigravityZhcn\backups`。
+- 新 ASAR 在替换前后都会校验哈希，并采用同目录原子重命名。
+- 恢复必须同时匹配客户端版本、当前补丁哈希和原始备份哈希。
+- 客户端自动更新后不会跨版本恢复旧 ASAR。
+
+## 开发命令
+
+```powershell
+npm ci --ignore-scripts
+npm run validate
+npm test
+npm run check
+npm run preview
+npm run cleanup
+npm run purge
+npm run collect:compatibility
+npm run build:portable
+```
+
+`npm run collect:compatibility` 只生成带 `UNVERIFIED` 标记的候选 JSON，不会自动
+修改严格白名单。发布与维护步骤见 [`docs/maintenance.md`](docs/maintenance.md) 和
+[`docs/releasing.md`](docs/releasing.md)。
+
+环境变量：
+
+- `AGY_INSTALL_PATH`：自动查找失败、存在多个安装目录或需要覆盖结果时，明确指定
+  Antigravity Desktop 安装目录。
+- `AGY_ZHCN_STATE_DIR`：覆盖缓存、备份和安装状态目录。
+- `AGY_USER_DATA_PATH`：覆盖 Antigravity 用户数据目录。
+
+## 项目边界
+
+本项目只支持独立的 Antigravity Desktop，不支持 Antigravity IDE。
+
+项目不包含、不上传也不分发 Google 的安装包、`app.asar`、原始运行时 `main.js`
+或其他专有资源。首版中文词汇参考的第三方项目与许可见
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
