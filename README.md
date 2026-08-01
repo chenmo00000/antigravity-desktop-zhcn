@@ -2,22 +2,32 @@
 
 面向 Windows 版 Antigravity Desktop 的安全中文本地化工具。
 
-当前已验证 `Antigravity Desktop 2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
-项目采用严格版本和文件指纹白名单；遇到未知版本、未知 `app.asar`、未知 UI bundle
-或异常备份时会停止，不会尝试“强行兼容”。
+> **Windows x64 用户只需下载一个 ZIP，无需安装 Node.js，也不用根据 Antigravity
+> 版本选择不同安装包。**
 
-所有已验证版本都包含在同一个 portable ZIP 中。用户只需下载最新版，工具会自动
-识别本机版本和具体构建指纹，不需要按 Antigravity 版本选择分支或安装包。同一个
-版本号如果存在多个官方构建，也可以分别登记并精确匹配。
+## 下载与安装
 
-仓库内部的兼容规则按
-`config/compatibility/<客户端版本>/<平台>-<架构>.json` 组织；这种拆分只用于维护，
-不会改变普通用户的一键使用流程。
+### 1. 下载最新版
 
-## 普通用户怎么用
+**[⬇️ 点击下载 Windows x64 便携版 ZIP](https://github.com/chenmo00000/antigravity-desktop-zhcn/releases/latest/download/antigravity-desktop-zhcn-portable-win-x64.zip)**
 
-发布到 GitHub 后，普通用户建议下载 Releases 中的
-`antigravity-desktop-zhcn-portable-win-x64.zip`。完整解压后无需安装 Node.js，直接：
+下载的文件名应为：
+
+```text
+antigravity-desktop-zhcn-portable-win-x64.zip
+```
+
+不要下载仓库首页 **Code → Download ZIP** 或 Release 页面底部的 **Source code**，
+它们是项目源码，不能直接一键汉化。需要查看版本说明或手动选择附件时，可打开
+[Releases 最新版页面](https://github.com/chenmo00000/antigravity-desktop-zhcn/releases/latest)。
+
+`.zip.sha256` 是供高级用户校验文件完整性的摘要，不是安装包，普通用户不用下载。
+
+### 2. 完整解压
+
+右键下载的 ZIP，选择“全部解压缩”。不要直接在压缩包预览窗口中运行 BAT 文件。
+
+### 3. 一键汉化
 
 1. 双击 `一键汉化.bat`；
 2. 工具自动检查环境、查找安装目录并核对版本与文件指纹；
@@ -25,10 +35,19 @@
 4. 确认安装后，按提示彻底关闭 Antigravity；
 5. 工具自动备份、安装并复检，完成后重新打开客户端。
 
+当前支持 `Antigravity Desktop 2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
+这些版本都使用上面的同一个 ZIP，工具会自动识别本机版本和具体构建指纹。同一个
+版本号如果存在多个官方构建，也可以分别登记并精确匹配。
+
 工具不会自动结束 Antigravity 进程，也不会绕过未知版本或未知文件指纹。需要先做
 诊断时，可以运行 `一键检查兼容性.bat`；普通安装不再要求手动依次执行检查和预览。
 
 需要恢复时，彻底关闭 Antigravity，然后双击 `一键恢复英文.bat`。
+
+项目采用严格版本和文件指纹白名单；遇到未知版本、未知 `app.asar`、未知 UI bundle
+或异常备份时会安全停止，不会尝试“强行兼容”。仓库内部的兼容规则按
+`config/compatibility/<客户端版本>/<平台>-<架构>.json` 组织；这种拆分只用于维护，
+不会改变普通用户的一键使用流程。
 
 ## 六个 BAT 的区别
 
