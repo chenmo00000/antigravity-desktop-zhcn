@@ -86,7 +86,7 @@ test("split compatibility configuration loads every supported version", async ()
   assert.equal(manifest.schemaVersion, 1);
   assert.deepEqual(
     [...new Set(manifest.targets.map((target) => target.appVersion))].sort(),
-    ["2.2.1", "2.3.0", "2.3.1", "2.4.3"],
+    ["2.2.1", "2.3.0", "2.3.1", "2.4.3", "2.5.0"],
   );
 });
 

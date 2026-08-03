@@ -64,7 +64,7 @@ test("dictionary translation supports exact and narrowly scoped dynamic text", (
   assert.equal(translateDictionaryValue("Quota refreshes tomorrow.", dictionary), null);
 });
 
-test("Antigravity 2.4.3 settings and usage strings are covered", async () => {
+test("Antigravity 2.5.0 settings and usage strings are covered", async () => {
   const current = await loadDomTranslations();
   const visibleStrings = [
     "Models & Usage",
@@ -112,6 +112,20 @@ test("Antigravity 2.4.3 settings and usage strings are covered", async () => {
     "Dark",
     "Light",
     "System",
+    "Requires manual review for all terminal commands and file accesses outside of the working folders.",
+    "Full machine",
+    "All terminal commands require review. The agent can read or write to any file in the machine.",
+    "Turbo mode",
+    "Disables all safety barriers for maximal iteration velocity.",
+    "Manually customize individual settings.",
+    "Outside of folders file access policy",
+    "Configures how the agent tries to access files outside of its working folders.",
+    "Require Review",
+    "Build With Google Plugins",
+    "Customize",
+    "Block all browser JavaScript execution.",
+    "Prompt for approval before running browser scripts.",
+    "Allow full browser script execution without prompting.",
   ];
 
   for (const source of visibleStrings) {
