@@ -41,6 +41,32 @@ export function formatBytes(bytes) {
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
+export function determinePurgeInstallAction({
+  state,
+  inspection,
+  sameInstallRoot,
+}) {
+  if (state?.status !== "installed") return "none";
+  if (!inspection || !sameInstallRoot) {
+    throw new Error("当前客户端安装路径与汉化记录不一致，拒绝清除恢复数据。");
+  }
+  if (
+    inspection.packageVersion === state.appVersion &&
+    inspection.appAsarSha256 === state.patchedAsarSha256
+  ) {
+    return "restore";
+  }
+  if (
+    inspection.target &&
+    inspection.appAsarSha256 === inspection.target.appAsarSha256
+  ) {
+    return "already-original";
+  }
+  throw new Error(
+    "当前客户端既不是记录中的汉化版本，也不是已验证的官方原版，拒绝清除恢复数据。",
+  );
+}
+
 export async function inspectCleanupTargets({
   previewRoot = getRuntimePreviewRoot(),
   stateRoot = getStateRoot(),

@@ -4,11 +4,76 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  determinePurgeInstallAction,
   formatBytes,
   inspectCleanupTargets,
   inspectPurgeTargets,
   removeCleanupTargets,
 } from "../src/lib/cleanup.mjs";
+
+test("purge restores only the exact recorded patched build", () => {
+  const state = {
+    status: "installed",
+    appVersion: "2.4.3",
+    patchedAsarSha256: "PATCHED_243",
+  };
+  const inspection = {
+    packageVersion: "2.4.3",
+    appAsarSha256: "PATCHED_243",
+    target: null,
+  };
+
+  assert.equal(
+    determinePurgeInstallAction({
+      state,
+      inspection,
+      sameInstallRoot: true,
+    }),
+    "restore",
+  );
+});
+
+test("purge skips stale backup restore after an official client upgrade", () => {
+  const state = {
+    status: "installed",
+    appVersion: "2.4.3",
+    patchedAsarSha256: "PATCHED_243",
+  };
+  const inspection = {
+    packageVersion: "2.5.0",
+    appAsarSha256: "ORIGINAL_250",
+    target: { appAsarSha256: "ORIGINAL_250" },
+  };
+
+  assert.equal(
+    determinePurgeInstallAction({
+      state,
+      inspection,
+      sameInstallRoot: true,
+    }),
+    "already-original",
+  );
+});
+
+test("purge refuses an unknown current client build", () => {
+  assert.throws(
+    () =>
+      determinePurgeInstallAction({
+        state: {
+          status: "installed",
+          appVersion: "2.4.3",
+          patchedAsarSha256: "PATCHED_243",
+        },
+        inspection: {
+          packageVersion: "2.5.0",
+          appAsarSha256: "UNKNOWN_250",
+          target: null,
+        },
+        sameInstallRoot: true,
+      }),
+    /不是已验证的官方原版/,
+  );
+});
 
 test("cleanup removes only reproducible files and preserves backups", async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "agy-cleanup-test-"));

@@ -46,6 +46,7 @@ import {
 } from "./lib/processes.mjs";
 import { readInstallState, writeInstallState } from "./lib/state.mjs";
 import {
+  determinePurgeInstallAction,
   formatBytes,
   inspectCleanupTargets,
   inspectPurgeTargets,
@@ -682,9 +683,25 @@ async function purge({ assumeYes = false } = {}) {
     return 0;
   }
 
-  console.log("完全卸载将执行以下操作：");
+  let initialInspection = null;
+  let installAction = "none";
   if (initialState?.status === "installed") {
+    initialInspection = await inspectInstallation();
+    installAction = determinePurgeInstallAction({
+      state: initialState,
+      inspection: initialInspection,
+      sameInstallRoot: areSamePaths(
+        initialInspection.installRoot,
+        initialState.installRoot,
+      ),
+    });
+  }
+
+  console.log("完全卸载将执行以下操作：");
+  if (installAction === "restore") {
     console.log("- 先验证备份并恢复英文原版；");
+  } else if (installAction === "already-original") {
+    console.log("- 当前客户端已是受支持的官方原版，跳过跨版本恢复；");
   }
   for (const target of targets) {
     console.log(`- 永久删除 ${target.label}: ${formatBytes(target.bytes)} (${target.path})`);
@@ -706,12 +723,28 @@ async function purge({ assumeYes = false } = {}) {
     return 0;
   }
 
-  if (initialState?.status === "installed") {
+  if (installAction === "restore") {
     await restore();
+  } else if (installAction === "already-original") {
+    const currentInspection = await inspectInstallation();
+    const currentAction = determinePurgeInstallAction({
+      state: initialState,
+      inspection: currentInspection,
+      sameInstallRoot: areSamePaths(
+        currentInspection.installRoot,
+        initialState.installRoot,
+      ),
+    });
+    if (
+      currentAction !== "already-original" ||
+      currentInspection.packageVersion !== initialInspection.packageVersion ||
+      currentInspection.appAsarSha256 !== initialInspection.appAsarSha256
+    ) {
+      throw new Error("确认后客户端文件发生变化，拒绝继续完全卸载。");
+    }
   }
 
-  const restoredState = await readInstallState();
-  await removeVerifiedLocalizedBundle(restoredState, { strict: true });
+  await removeVerifiedLocalizedBundle(initialState, { strict: true });
   const refreshedTargets = await inspectPurgeTargets();
   const result = await removeCleanupTargets(refreshedTargets);
 
