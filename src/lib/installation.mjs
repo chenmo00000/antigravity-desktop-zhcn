@@ -58,6 +58,13 @@ export async function loadCompatibilityManifest({
   return { schemaVersion: 1, targets };
 }
 
+export async function loadEffectiveCompatibilityManifest(options = {}) {
+  const localManifest = await loadCompatibilityManifest();
+  const { loadEffectiveCompatibilityManifest: loadRemoteManifest } =
+    await import("./remote-compatibility.mjs");
+  return loadRemoteManifest({ localManifest, ...options });
+}
+
 export function getVersionTargets(
   targets,
   { platform, arch, appVersion },
@@ -95,7 +102,7 @@ export function classifyLocalizedBundleInstall({
   return "reject";
 }
 
-export async function inspectInstallation() {
+export async function inspectInstallation({ allowRemoteCompatibility = true } = {}) {
   const {
     installRoot,
     source: installRootSource,
@@ -108,7 +115,9 @@ export async function inspectInstallation() {
   await access(appAsarPath, constants.R_OK);
 
   const packageJson = await readJsonFromAsar(appAsarPath, "package.json");
-  const manifest = await loadCompatibilityManifest();
+  const manifest = allowRemoteCompatibility
+    ? await loadEffectiveCompatibilityManifest()
+    : await loadCompatibilityManifest();
   const versionTargets = getVersionTargets(manifest.targets, {
     platform: process.platform,
     arch: process.arch,
@@ -164,5 +173,6 @@ export async function inspectInstallation() {
     versionKnown: versionTargets.length > 0,
     compatibleBuildCount: versionTargets.length,
     supportedVersions,
+    remoteCompatibility: manifest.remote ?? { status: "local-only" },
   };
 }

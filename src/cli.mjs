@@ -15,7 +15,7 @@ import os from "node:os";
 import {
   classifyLocalizedBundleInstall,
   inspectInstallation,
-  loadCompatibilityManifest,
+  loadEffectiveCompatibilityManifest,
 } from "./lib/installation.mjs";
 import {
   fetchUiBundle,
@@ -70,6 +70,16 @@ function printStaticReport(inspection) {
   console.log(`路径来源: ${inspection.installRootSourceLabel}`);
   console.log(`客户端版本: ${inspection.packageVersion}`);
   console.log(`app.asar SHA256: ${inspection.appAsarSha256}`);
+  const remote = inspection.remoteCompatibility;
+  if (remote?.status === "verified-network") {
+    console.log(`兼容清单: 远程签名清单（序号 ${remote.sequence}）`);
+  } else if (remote?.status === "verified-cache") {
+    console.log(`兼容清单: 已验证远程缓存（序号 ${remote.sequence}）`);
+  } else if (remote?.status === "local-fallback") {
+    console.log("兼容清单: 内置白名单（远程不可用或验证失败）");
+  } else {
+    console.log("兼容清单: 内置白名单");
+  }
 
   if (inspection.target) {
     const custom = inspection.customSchemes[inspection.target.customSchemePath];
@@ -304,7 +314,7 @@ async function installLocalizedBundle({
 }
 
 async function findInstalledTarget(state) {
-  const manifest = await loadCompatibilityManifest();
+  const manifest = await loadEffectiveCompatibilityManifest();
   return (
     manifest.targets.find(
       (target) =>

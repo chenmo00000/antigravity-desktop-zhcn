@@ -11,7 +11,8 @@ npm test
 npm run validate
 ```
 
-项目校验同时检查六个 BAT 的 CRLF、便携运行时入口和工作流所需命令。
+项目校验同时检查六个 BAT 的 CRLF、便携运行时入口、工作流所需命令，以及仓库中
+远程兼容清单的 Ed25519 签名。
 Dependabot 每月检查 npm 锁文件和 GitHub Actions 主版本更新。
 
 ## 便携包
@@ -33,6 +34,9 @@ npm run build:portable
 临时目录会在成功或失败后清理。生产依赖来自当前 `package-lock.json`，构建前必须
 已通过 `npm ci` 安装。
 
+便携包会包含兼容信任配置、已签名清单及验签代码，但绝不能包含签名私钥。构建后应
+检查 ZIP 条目，确认不存在 `.runtime`、`.pem` 或 signing 目录。
+
 ## GitHub Release
 
 `.github/workflows/release.yml` 支持手动运行并上传 Actions Artifact。推送 `v*` 标签
@@ -45,6 +49,7 @@ npm run build:portable
 2. `npm test` 和 `npm run validate` 通过；
 3. 使用便携包内置 `runtime/node.exe` 成功运行兼容性检查；
 4. Release 页面说明未知版本会被拒绝，不承诺模糊兼容。
+5. `npm run compatibility:verify` 已通过，签名清单未过期且序列号高于上一版。
 
 ## 版本兼容策略
 
@@ -56,5 +61,8 @@ npm run build:portable
   处理官方同版本重新打包；完全相同的构建指纹不能重复。
 - 新客户端版本必须重新采集 ASAR、customScheme 和运行时 UI 指纹。只有 UI 文本或
   结构发生变化时才需要扩充翻译词典。
+- 已经包含此公钥验签机制的便携包，可以从固定 HTTPS 地址获取后来新增的已签名精确
+  指纹；验签或网络失败时只使用已验证缓存或内置白名单。翻译代码和词典不会通过该
+  通道远程更新。
 - 汉化工具自身使用独立版本号和 `v*` 标签；发布说明应列出该工具版本支持的全部
   客户端版本，不为每个客户端版本单独制作 ZIP。

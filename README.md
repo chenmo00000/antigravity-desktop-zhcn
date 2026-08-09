@@ -35,7 +35,7 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 4. 确认安装后，按提示彻底关闭 Antigravity；
 5. 工具自动备份、安装并复检，完成后重新打开客户端。
 
-当前支持 `Antigravity Desktop 2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
+当前支持 `Antigravity Desktop 2.6.0、2.5.0、2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
 这些版本都使用上面的同一个 ZIP，工具会自动识别本机版本和具体构建指纹。同一个
 版本号如果存在多个官方构建，也可以分别登记并精确匹配。
 
@@ -44,8 +44,9 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 
 需要恢复时，彻底关闭 Antigravity，然后双击 `一键恢复英文.bat`。
 
-项目采用严格版本和文件指纹白名单；遇到未知版本、未知 `app.asar`、未知 UI bundle
-或异常备份时会安全停止，不会尝试“强行兼容”。仓库内部的兼容规则按
+项目采用严格版本和文件指纹白名单；内置规则之外，还会通过 HTTPS 获取维护者签名
+的兼容清单，并使用便携包内置的 Ed25519 公钥验签。网络不可用、清单过期、签名错误
+或远程规则与内置规则冲突时会安全退回内置白名单，不会尝试“强行兼容”。仓库内部的兼容规则按
 `config/compatibility/<客户端版本>/<平台>-<架构>.json` 组织；这种拆分只用于维护，
 不会改变普通用户的一键使用流程。
 
@@ -63,7 +64,7 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 ## 运行要求
 
 - Windows 10/11 x64
-- Antigravity Desktop 2.4.3、2.3.1、2.3.0 或 2.2.1
+- Antigravity Desktop 2.6.0、2.5.0、2.4.3、2.3.1、2.3.0 或 2.2.1
 - 使用 portable 发布包：无需另装 Node.js，安装过程无需下载 npm 依赖
 - 直接使用源码：需要 Node.js 22.12 或更高版本
 
@@ -74,8 +75,10 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 使用历史版本时，建议先把 Antigravity 的更新模式设为手动或关闭，避免客户端自动
 升级后覆盖补丁。升级到未列出的版本后，应先重新运行兼容性检查。
 
-遇到尚未登记的版本或构建时，工具会显示最新版 Release 地址。下载最新版后仍然
-不支持，才需要把兼容性检查显示的版本和哈希信息提交给维护者。
+遇到尚未登记的版本或构建时，先保持联网并重新运行兼容性检查；包含此验签机制的工具
+可以读取维护者后来发布且已签名的精确指纹。若远程清单尚未收录，工具会显示最新版 Release
+地址，此时再把兼容性检查显示的版本和哈希信息提交给维护者。客户端 UI 结构或翻译
+词典发生变化时，仍可能需要下载新版工具。
 
 ## 安装目录怎么找到
 
@@ -129,6 +132,9 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 ## 安全与回滚
 
 - 支持版本、`app.asar`、`customScheme.js` 和运行时 UI 四重 SHA-256 校验。
+- 远程兼容清单必须通过 Ed25519 签名、有效期、序列号回退防护和规则冲突检查。
+- 验证通过的远程清单缓存在 `%LOCALAPPDATA%\AntigravityZhcn\compatibility`；离线时
+  只能使用仍在有效期内且已验签的缓存或内置白名单。
 - 每次构建使用全新的系统临时目录，不复用旧解包目录。
 - 原始 `app.asar` 按版本和哈希保存在
   `%LOCALAPPDATA%\AntigravityZhcn\backups`。
@@ -147,6 +153,7 @@ npm run preview
 npm run cleanup
 npm run purge
 npm run collect:compatibility
+npm run compatibility:verify
 npm run release:notes
 npm run build:portable
 ```
@@ -161,6 +168,8 @@ npm run build:portable
   Antigravity Desktop 安装目录。
 - `AGY_ZHCN_STATE_DIR`：覆盖缓存、备份和安装状态目录。
 - `AGY_USER_DATA_PATH`：覆盖 Antigravity 用户数据目录。
+- `AGY_DISABLE_REMOTE_COMPATIBILITY=1`：本次运行不联网检查远程兼容清单；仍可使用
+  已验签且有效的本地缓存，否则只使用内置白名单。
 
 ## 项目边界
 

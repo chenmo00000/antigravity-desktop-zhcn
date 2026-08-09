@@ -194,6 +194,13 @@ assert(
   "缺少兼容性候选采集命令。",
 );
 assert(
+  packageJson.scripts["compatibility:sign"] ===
+    "node scripts/sign-compatibility-manifest.mjs" &&
+    packageJson.scripts["compatibility:verify"] ===
+      "node scripts/verify-remote-compatibility.mjs",
+  "缺少远程兼容性签名或验证命令。",
+);
+assert(
   packageJson.scripts["release:notes"] ===
     "node scripts/generate-release-notes.mjs",
   "缺少 Release 兼容版本说明生成命令。",
@@ -261,6 +268,16 @@ for (const moduleFile of moduleFiles) {
     `${path.relative(projectRoot, moduleFile)} 语法检查失败：${result.stderr}`,
   );
 }
+
+const remoteCompatibilityValidation = spawnSync(
+  process.execPath,
+  [path.join(projectRoot, "scripts", "verify-remote-compatibility.mjs")],
+  { encoding: "utf8", windowsHide: true, cwd: projectRoot },
+);
+assert(
+  remoteCompatibilityValidation.status === 0,
+  `远程兼容性签名验证失败：${remoteCompatibilityValidation.stderr}`,
+);
 
 console.log(`兼容目标: ${compatibility.targets.length}`);
 console.log(
