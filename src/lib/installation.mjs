@@ -84,6 +84,17 @@ export function findCompatibilityTarget(
   );
 }
 
+export function classifyLocalizedBundleInstall({
+  existingHash,
+  expectedHash,
+  replaceableHash = null,
+}) {
+  if (existingHash === expectedHash) return "reuse";
+  if (existingHash === null) return "create";
+  if (replaceableHash && existingHash === replaceableHash) return "replace";
+  return "reject";
+}
+
 export async function inspectInstallation() {
   const {
     installRoot,

@@ -4,10 +4,49 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  classifyLocalizedBundleInstall,
   findCompatibilityTarget,
   getVersionTargets,
   loadCompatibilityManifest,
 } from "../src/lib/installation.mjs";
+
+test("localized UI install only replaces a hash verified by prior state", () => {
+  const expectedHash = "NEW";
+  const replaceableHash = "OLD";
+
+  assert.equal(
+    classifyLocalizedBundleInstall({
+      existingHash: null,
+      expectedHash,
+      replaceableHash,
+    }),
+    "create",
+  );
+  assert.equal(
+    classifyLocalizedBundleInstall({
+      existingHash: expectedHash,
+      expectedHash,
+      replaceableHash,
+    }),
+    "reuse",
+  );
+  assert.equal(
+    classifyLocalizedBundleInstall({
+      existingHash: replaceableHash,
+      expectedHash,
+      replaceableHash,
+    }),
+    "replace",
+  );
+  assert.equal(
+    classifyLocalizedBundleInstall({
+      existingHash: "UNKNOWN",
+      expectedHash,
+      replaceableHash,
+    }),
+    "reject",
+  );
+});
 
 const firstBuild = {
   platform: "win32",
@@ -86,7 +125,7 @@ test("split compatibility configuration loads every supported version", async ()
   assert.equal(manifest.schemaVersion, 1);
   assert.deepEqual(
     [...new Set(manifest.targets.map((target) => target.appVersion))].sort(),
-    ["2.2.1", "2.3.0", "2.3.1", "2.4.3", "2.5.0"],
+    ["2.2.1", "2.3.0", "2.3.1", "2.4.3", "2.5.0", "2.6.0"],
   );
 });
 

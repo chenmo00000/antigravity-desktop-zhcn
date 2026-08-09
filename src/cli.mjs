@@ -13,6 +13,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import os from "node:os";
 import {
+  classifyLocalizedBundleInstall,
   inspectInstallation,
   loadCompatibilityManifest,
 } from "./lib/installation.mjs";
@@ -251,6 +252,7 @@ async function installLocalizedBundle({
   bundlePath,
   bundle,
   expectedHash,
+  replaceableHash = null,
 }) {
   await mkdir(path.dirname(bundlePath), { recursive: true });
   const existingHash = await sha256File(bundlePath).catch((error) => {
@@ -258,10 +260,15 @@ async function installLocalizedBundle({
     throw error;
   });
 
-  if (existingHash === expectedHash) {
+  const action = classifyLocalizedBundleInstall({
+    existingHash,
+    expectedHash,
+    replaceableHash,
+  });
+  if (action === "reuse") {
     return { created: false };
   }
-  if (existingHash !== null) {
+  if (action === "reject") {
     throw new Error(`目标中文 UI 文件已存在且哈希未知：${bundlePath}`);
   }
 
@@ -272,8 +279,28 @@ async function installLocalizedBundle({
     await rm(temporaryPath, { force: true });
     throw new Error("中文 UI 暂存文件哈希验证失败。");
   }
-  await rename(temporaryPath, bundlePath);
-  return { created: true };
+  if (action === "create") {
+    await rename(temporaryPath, bundlePath);
+    return { created: true };
+  }
+
+  try {
+    const replacement = await atomicReplaceFile({
+      currentPath: bundlePath,
+      replacementPath: temporaryPath,
+      currentExpectedHash: replaceableHash,
+      replacementExpectedHash: expectedHash,
+    });
+    return {
+      created: false,
+      replaced: true,
+      finalize: replacement.finalize,
+      rollback: replacement.rollback,
+    };
+  } catch (error) {
+    await rm(temporaryPath, { force: true }).catch(() => {});
+    throw error;
+  }
 }
 
 async function findInstalledTarget(state) {
@@ -431,8 +458,43 @@ async function install({ assumeYes = false } = {}) {
     { resolvedUi },
   );
 
+  const installedBundlePath = path.join(
+    getAntigravityUserDataRoot(),
+    INSTALLED_BUNDLE_NAME,
+  );
+  const existingStateTarget =
+    existingState?.status === "installed"
+      ? await findInstalledTarget(existingState)
+      : null;
+  const replaceableLocalizedBundleHash =
+    existingStateTarget &&
+    areSamePaths(existingState.installRoot, initialInspection.installRoot) &&
+    existingState.installedBundlePath &&
+    areSamePaths(existingState.installedBundlePath, installedBundlePath)
+      ? existingState.localizedBundleSha256
+      : null;
+  const existingLocalizedBundleHash = await sha256File(
+    installedBundlePath,
+  ).catch((error) => {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  });
+  const localizedBundleAction = classifyLocalizedBundleInstall({
+    existingHash: existingLocalizedBundleHash,
+    expectedHash: localized.sha256,
+    replaceableHash: replaceableLocalizedBundleHash,
+  });
+  if (localizedBundleAction === "reject") {
+    throw new Error(
+      `目标中文 UI 文件已存在且哈希未知：${installedBundlePath}`,
+    );
+  }
+
   printStep(3, totalSteps, "等待安装确认");
   console.log("下一步会先创建并验证原始 app.asar 备份，再安装汉化补丁。");
+  if (localizedBundleAction === "replace") {
+    console.log("检测到由本工具安装的旧版中文 UI；安装时将验证并原子替换。");
+  }
   if (
     !(await askForConfirmation("确认继续安装吗？", {
       assumeYes,
@@ -473,10 +535,7 @@ async function install({ assumeYes = false } = {}) {
   );
   const builtAsarPath = path.join(buildDirectory, "app.asar");
   let replacement;
-  const installedBundlePath = path.join(
-    getAntigravityUserDataRoot(),
-    INSTALLED_BUNDLE_NAME,
-  );
+  let bundleResult;
   let bundleCreatedThisRun = false;
 
   try {
@@ -498,10 +557,11 @@ async function install({ assumeYes = false } = {}) {
       replacementExpectedHash: built.patchedAsarSha256,
     });
 
-    const bundleResult = await installLocalizedBundle({
+    bundleResult = await installLocalizedBundle({
       bundlePath: installedBundlePath,
       bundle: localized.buffer,
       expectedHash: localized.sha256,
+      replaceableHash: replaceableLocalizedBundleHash,
     });
     bundleCreatedThisRun = bundleResult.created;
 
@@ -532,22 +592,36 @@ async function install({ assumeYes = false } = {}) {
       backupPath,
       installedBundlePath,
     });
+    await bundleResult.finalize?.().catch((error) => {
+      console.warn(`警告：旧中文文件临时副本未能清理：${error.message}`);
+    });
     await replacement.finalize().catch((error) => {
       console.warn(`警告：旧文件临时副本未能清理：${error.message}`);
     });
   } catch (error) {
+    const rollbackErrors = [];
+    if (bundleResult?.rollback) {
+      try {
+        await bundleResult.rollback();
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
     if (replacement) {
       try {
         await replacement.rollback();
       } catch (rollbackError) {
-        throw new AggregateError(
-          [error, rollbackError],
-          "安装失败，并且自动回滚也失败。请不要启动 Antigravity。",
-        );
+        rollbackErrors.push(rollbackError);
       }
     }
     if (bundleCreatedThisRun) {
       await rm(installedBundlePath, { force: true }).catch(() => {});
+    }
+    if (rollbackErrors.length > 0) {
+      throw new AggregateError(
+        [error, ...rollbackErrors],
+        "安装失败，并且自动回滚也失败。请不要启动 Antigravity。",
+      );
     }
     throw error;
   } finally {

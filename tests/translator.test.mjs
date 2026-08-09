@@ -134,3 +134,35 @@ test("Antigravity 2.5.0 settings and usage strings are covered", async () => {
     assert.match(translated, /[\u3400-\u9fff]/u, `translation is not Chinese: ${source}`);
   }
 });
+
+test("Antigravity 2.6.0 settings and plugin strings are covered", async () => {
+  const current = await loadDomTranslations();
+  const visibleStrings = [
+    "Agent Terminal Customizations",
+    "Allow sandboxed commands to make network requests.",
+    "Autonomous",
+    "Autonomous mode active: the agent works independently, and does not ask questions or request new permissions.",
+    "Discover helpful skills & plugins",
+    "Every terminal command requires approval.",
+    "Hooks",
+    "Keep the app accessible from the menu bar and running in the background when all windows are closed.",
+    "Let the agent access past conversations to inform its responses.",
+    "Open files in the background if the agent creates or edits them",
+    "Open the agent panel on window reload",
+    "Plugin details",
+    "Predict the location of your next edit and navigate you there with a tab keypress.",
+    "Terminal Setup Script",
+    "The agent always asks for confirmation before executing terminal commands (except those in the Allow list).",
+    "The agent always asks for review.",
+    "The agent asks for permission before executing commands matched by a deny list entry.",
+    "The agent auto-executes commands matched by an allow list entry.",
+    "Use my conversation history to tell me which skills and plugins would be helpful for me.",
+    "View Usage",
+  ];
+
+  for (const source of visibleStrings) {
+    const translated = current.exact[source];
+    assert.ok(translated, `missing translation for: ${source}`);
+    assert.match(translated, /[\u3400-\u9fff]/u, `translation is not Chinese: ${source}`);
+  }
+});
