@@ -35,7 +35,7 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 4. 确认安装后，按提示彻底关闭 Antigravity；
 5. 工具自动备份、安装并复检，完成后重新打开客户端。
 
-当前支持 `Antigravity Desktop 2.6.0、2.5.0、2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
+当前支持 `Antigravity Desktop 2.7.1、2.6.0、2.5.0、2.4.3、2.3.1、2.3.0、2.2.1 / Windows x64`。
 这些版本都使用上面的同一个 ZIP，工具会自动识别本机版本和具体构建指纹。同一个
 版本号如果存在多个官方构建，也可以分别登记并精确匹配。
 
@@ -64,7 +64,7 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 ## 运行要求
 
 - Windows 10/11 x64
-- Antigravity Desktop 2.6.0、2.5.0、2.4.3、2.3.1、2.3.0 或 2.2.1
+- Antigravity Desktop 2.7.1、2.6.0、2.5.0、2.4.3、2.3.1、2.3.0 或 2.2.1
 - 使用 portable 发布包：无需另装 Node.js，安装过程无需下载 npm 依赖
 - 直接使用源码：需要 Node.js 22.12 或更高版本
 
