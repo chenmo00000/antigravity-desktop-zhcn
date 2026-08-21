@@ -134,6 +134,7 @@ test("split compatibility configuration loads every supported version", async ()
       "2.6.0",
       "2.7.1",
       "2.8.1",
+      "2.9.1",
     ],
   );
 });
