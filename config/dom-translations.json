@@ -358,6 +358,7 @@
     "Autonomous mode active: the agent works independently, and does not ask questions or request new permissions.": "自主模式已启用：智能体将独立工作，不会提问或请求新的权限。",
     "Branch / Ref": "分支 / 引用",
     "Copy config file path": "复制配置文件路径",
+    "Copy Config File Path": "复制配置文件路径",
     "Copy Image": "复制图片",
     "Discover helpful skills & plugins": "发现实用的技能和插件",
     "Drop to add to Agent": "拖放以添加给智能体",

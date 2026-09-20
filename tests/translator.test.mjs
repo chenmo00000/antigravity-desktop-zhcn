@@ -64,6 +64,14 @@ test("dictionary translation supports exact and narrowly scoped dynamic text", (
   assert.equal(translateDictionaryValue("Quota refreshes tomorrow.", dictionary), null);
 });
 
+test("Antigravity 2.15.0 config path label is translated", async () => {
+  const current = await loadDomTranslations();
+  assert.equal(
+    translateDictionaryValue("Copy Config File Path", current),
+    "复制配置文件路径",
+  );
+});
+
 test("Antigravity 2.5.0 settings and usage strings are covered", async () => {
   const current = await loadDomTranslations();
   const visibleStrings = [
