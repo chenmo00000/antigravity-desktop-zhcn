@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "2.18.1",
+  "targets": [
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "appVersion": "2.18.1",
+      "packageVersion": "2.18.1",
+      "appAsarSha256": "3C03CE352DC3C1B43F357C27EAD1F73C74D198A8DED89B1B3D6A2539E7A6AC5C",
+      "customSchemePath": "dist/customScheme.js",
+      "customSchemeSha256": "6A533F37C2C26D405CFD7BC0C2A629803BDBDD843924BD3306D4E6F1087A4E98",
+      "uiBundleSha256": "02A0E7591663A6ECAE5CC2727979B3C06804BF39F5605D83DBA5D1108439BA80",
+      "uiBundleSize": 9596223,
+      "notes": "Verified against the Windows x64 Antigravity Desktop 2.18.1 installation sampled on 2026-09-30."
+    }
+  ]
+}
