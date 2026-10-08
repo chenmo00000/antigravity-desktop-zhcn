@@ -140,6 +140,7 @@ test("split compatibility configuration loads every supported version", async ()
       "2.19.1",
       "2.2.1",
       "2.21.0",
+      "2.21.1",
       "2.3.0",
       "2.3.1",
       "2.4.3",
