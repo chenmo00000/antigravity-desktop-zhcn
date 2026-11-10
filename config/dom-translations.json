@@ -452,7 +452,25 @@
     "Configure built-in browser, link opening, and browser subagent preferences.": "配置内置浏览器、链接打开方式和浏览器子智能体偏好。",
     "Configure allowed and denied URLs for the browser subagent (invoked with /browser). Requires": "配置浏览器子智能体（通过 /browser 调用）允许和拒绝的网址。需要安装",
     "Link Settings": "链接设置",
-    "Chat Layout": "对话布局"
+    "Chat Layout": "对话布局",
+    "Knowledge Work": "知识工作",
+    "Simplified interface for research, writing, and everyday tasks.": "适合研究、写作和日常任务的简洁界面。",
+    "Software Engineering": "软件工程",
+    "Full interface for coding, developer tools, and managing agents.": "完整界面，适合编程、使用开发工具和管理智能体。",
+    "Configure what the agent can do in local and remote conversations.": "配置智能体在本地和远程对话中可以执行的操作。",
+    "This Computer": "此电脑",
+    "Remote": "远程",
+    "Controls permissions for remote conversations.": "控制远程对话的权限。",
+    "Type": "输入",
+    "and select": "并选择",
+    "to have the agent generate a plan.": "让智能体生成计划。",
+    "Voice": "语音",
+    "The voice used in Voice mode. Powered by Gemini Live.": "语音模式使用的声音，由 Gemini Live 提供支持。",
+    "Not set": "未设置",
+    "Change": "更改",
+    "Volume": "音量",
+    "How loud Antigravity's voice is.": "调整 Antigravity 的语音音量。",
+    "Voice volume": "语音音量"
   },
   "patterns": [
     {

@@ -1,6 +1,7 @@
 import {
   copyFile,
   mkdir,
+  mkdtemp,
   rename,
   rm,
   rmdir,
@@ -426,6 +427,76 @@ async function updateInstalledLocalization({
   return 0;
 }
 
+async function repairInstalledPatch({ existingState, initialInspection, assumeYes }) {
+  const target = await findInstalledTarget(existingState);
+  if (!target) {
+    throw new Error("现有汉化状态无法对应到兼容性清单，请先恢复英文。");
+  }
+  if ((await sha256File(existingState.backupPath)) !== existingState.originalAsarSha256) {
+    throw new Error("原始 ASAR 备份校验失败，拒绝修复。");
+  }
+
+  const buildDirectory = await mkdtemp(path.join(os.tmpdir(), "antigravity-zhcn-repair-"));
+  try {
+    const builtAsarPath = path.join(buildDirectory, "app.asar");
+    const built = await buildPatchedAsar({
+      sourceAsarPath: existingState.backupPath,
+      sourceUnpackedPath: `${initialInspection.appAsarPath}.unpacked`,
+      outputAsarPath: builtAsarPath,
+      customSchemePath: target.customSchemePath,
+      expectedCustomSchemeSha256: existingState.originalCustomSchemeSha256,
+    });
+    if (built.packageVersion !== existingState.appVersion) {
+      throw new Error("修复构建的客户端版本不一致。");
+    }
+    if (built.patchedAsarSha256 === existingState.patchedAsarSha256) {
+      return false;
+    }
+    if (!(await askForConfirmation("检测到旧版主包补丁需要修复，确认继续吗？", { assumeYes }))) {
+      console.log("已取消；现有汉化保持不变。");
+      return null;
+    }
+
+    await askUserToCloseAntigravity(
+      "修复文件已生成。请彻底关闭 Antigravity，然后按回车继续修复...",
+    );
+    const current = await inspectInstallation();
+    if (
+      !areSamePaths(current.installRoot, existingState.installRoot) ||
+      current.packageVersion !== existingState.appVersion ||
+      current.appAsarSha256 !== existingState.patchedAsarSha256 ||
+      (await sha256File(existingState.installedBundlePath)) !== existingState.localizedBundleSha256
+    ) {
+      throw new Error("等待期间客户端或中文文件发生变化，拒绝修复。");
+    }
+
+    const replacement = await atomicReplaceFile({
+      currentPath: current.appAsarPath,
+      replacementPath: builtAsarPath,
+      currentExpectedHash: existingState.patchedAsarSha256,
+      replacementExpectedHash: built.patchedAsarSha256,
+    });
+    try {
+      await writeInstallState({
+        ...existingState,
+        repairedAt: new Date().toISOString(),
+        patchedAsarSha256: built.patchedAsarSha256,
+        patchedCustomSchemeSha256: built.patchedCustomSchemeSha256,
+      });
+    } catch (error) {
+      await replacement.rollback();
+      throw error;
+    }
+    await replacement.finalize().catch((error) => {
+      console.warn(`警告：旧补丁临时副本未能清理：${error.message}`);
+    });
+    console.log("主包补丁修复完成。现在可以重新打开 Antigravity。");
+    return true;
+  } finally {
+    await rm(buildDirectory, { recursive: true, force: true });
+  }
+}
+
 async function install({ assumeYes = false } = {}) {
   const existingState = await readInstallState();
   const initialInspection = await inspectInstallation();
@@ -441,9 +512,15 @@ async function install({ assumeYes = false } = {}) {
       existingState.installedBundlePath,
     ).catch(() => null);
     if (installedBundleHash === existingState.localizedBundleSha256) {
-      return updateInstalledLocalization({
+      const repaired = await repairInstalledPatch({
         existingState,
         initialInspection,
+        assumeYes,
+      });
+      if (repaired === null) return 0;
+      return updateInstalledLocalization({
+        existingState: repaired ? await readInstallState() : existingState,
+        initialInspection: repaired ? await inspectInstallation() : initialInspection,
         installedBundleHash,
         assumeYes,
       });

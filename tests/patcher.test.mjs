@@ -34,6 +34,23 @@ test("patchCustomSchemeSource adds a scoped scheme and redirect", () => {
   assert.match(patched, /scheme: 'plugin'/);
 });
 
+test("patchCustomSchemeSource places the redirect in the handler when an earlier function has the same ending", () => {
+  const source = fixture.replace(
+    "function registerCustomSchemeHandlers() {",
+    `function handleFaviconProtocolRequest() {
+    return new Response(null, { status: 200 });
+}
+function registerCustomSchemeHandlers() {`,
+  );
+  const patched = patchCustomSchemeSource(source);
+  const handlerStart = patched.indexOf("function registerCustomSchemeHandlers() {");
+  const redirect = patched.indexOf("webRequest.onBeforeRequest(");
+  const pluginHandler = patched.indexOf("protocol.handle('plugin'", handlerStart);
+
+  assert.ok(handlerStart < redirect);
+  assert.ok(redirect < pluginHandler);
+});
+
 test("patchCustomSchemeSource refuses a second patch", () => {
   const patched = patchCustomSchemeSource(fixture);
   assert.throws(

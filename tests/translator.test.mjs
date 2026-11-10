@@ -174,3 +174,33 @@ test("Antigravity 2.6.0 settings and plugin strings are covered", async () => {
     assert.match(translated, /[\u3400-\u9fff]/u, `translation is not Chinese: ${source}`);
   }
 });
+
+test("Antigravity 2.30.0 General settings visible strings are covered", async () => {
+  const current = await loadDomTranslations();
+  const visibleStrings = [
+    "Knowledge Work",
+    "Simplified interface for research, writing, and everyday tasks.",
+    "Software Engineering",
+    "Full interface for coding, developer tools, and managing agents.",
+    "Configure what the agent can do in local and remote conversations.",
+    "This Computer",
+    "Remote",
+    "Controls permissions for remote conversations.",
+    "Type",
+    "and select",
+    "to have the agent generate a plan.",
+    "Voice",
+    "The voice used in Voice mode. Powered by Gemini Live.",
+    "Not set",
+    "Change",
+    "Volume",
+    "How loud Antigravity's voice is.",
+    "Voice volume",
+  ];
+
+  for (const source of visibleStrings) {
+    const translated = translateDictionaryValue(source, current);
+    assert.ok(translated, `missing General settings translation: ${source}`);
+    assert.match(translated, /[\u3400-\u9fff]/u);
+  }
+});
