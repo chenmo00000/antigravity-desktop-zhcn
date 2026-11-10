@@ -447,7 +447,12 @@
     "Toggle Maximize Side Panel": "切换侧边面板最大化",
     "Open Command Palette": "打开命令面板",
     "Previous Side Panel Tab": "上一个侧边面板标签页",
-    "Next Side Panel Tab": "下一个侧边面板标签页"
+    "Next Side Panel Tab": "下一个侧边面板标签页",
+    "Interface Layout": "界面布局",
+    "Configure built-in browser, link opening, and browser subagent preferences.": "配置内置浏览器、链接打开方式和浏览器子智能体偏好。",
+    "Configure allowed and denied URLs for the browser subagent (invoked with /browser). Requires": "配置浏览器子智能体（通过 /browser 调用）允许和拒绝的网址。需要安装",
+    "Link Settings": "链接设置",
+    "Chat Layout": "对话布局"
   },
   "patterns": [
     {
