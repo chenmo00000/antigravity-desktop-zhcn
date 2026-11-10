@@ -470,9 +470,32 @@
     "Change": "更改",
     "Volume": "音量",
     "How loud Antigravity's voice is.": "调整 Antigravity 的语音音量。",
-    "Voice volume": "语音音量"
+    "Voice volume": "语音音量",
+    "Workspace": "工作区",
+    "Create New Project": "新建项目",
+    "Announcements and tips": "公告与提示",
+    "Search Conversations": "搜索对话",
+    "Start Voice mode": "启动语音模式",
+    "Hey there, what should we build today?": "今天想构建什么？",
+    "Welcome back. Where should we pick up?": "欢迎回来。想从哪里继续？",
+    "Good to see you. What's next?": "很高兴见到你。接下来做什么？"
   },
   "patterns": [
+    {
+      "source": "^Hey (.+), what should we build today\\?$",
+      "target": "$1，今天想构建什么？",
+      "flags": "u"
+    },
+    {
+      "source": "^Welcome back, (.+)\\. Where should we pick up\\?$",
+      "target": "欢迎回来，$1。想从哪里继续？",
+      "flags": "u"
+    },
+    {
+      "source": "^Good to see you, (.+)\\. What's next\\?$",
+      "target": "很高兴见到你，$1。接下来做什么？",
+      "flags": "u"
+    },
     {
       "source": "^Select project, current: (.+)$",
       "target": "选择项目，当前：$1",

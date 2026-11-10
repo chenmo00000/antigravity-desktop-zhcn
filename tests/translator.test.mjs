@@ -204,3 +204,27 @@ test("Antigravity 2.30.0 General settings visible strings are covered", async ()
     assert.match(translated, /[\u3400-\u9fff]/u);
   }
 });
+
+test("Antigravity 2.31.0 home screen greeting variants are translated without changing the name", async () => {
+  const current = await loadDomTranslations();
+  const greetings = new Map([
+    ["Hey 小太阳, what should we build today?", "小太阳，今天想构建什么？"],
+    ["Hey there, what should we build today?", "今天想构建什么？"],
+    ["Welcome back, 小太阳. Where should we pick up?", "欢迎回来，小太阳。想从哪里继续？"],
+    ["Welcome back. Where should we pick up?", "欢迎回来。想从哪里继续？"],
+    ["Good to see you, 小太阳. What's next?", "很高兴见到你，小太阳。接下来做什么？"],
+    ["Good to see you. What's next?", "很高兴见到你。接下来做什么？"],
+  ]);
+  for (const [source, target] of greetings) {
+    assert.equal(translateDictionaryValue(source, current), target);
+  }
+  for (const source of [
+    "Workspace",
+    "Create New Project",
+    "Announcements and tips",
+    "Search Conversations",
+    "Start Voice mode",
+  ]) {
+    assert.match(translateDictionaryValue(source, current), /[\u3400-\u9fff]/u);
+  }
+});
