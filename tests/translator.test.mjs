@@ -228,3 +228,12 @@ test("Antigravity 2.31.0 home screen greeting variants are translated without ch
     assert.match(translateDictionaryValue(source, current), /[\u3400-\u9fff]/u);
   }
 });
+
+test("Antigravity 2.31.2 home screen controls are translated", async () => {
+  const current = await loadDomTranslations();
+  assert.equal(translateDictionaryValue("More actions", current), "更多操作");
+  assert.equal(
+    translateDictionaryValue("Where the agent runs, current: This Computer", current),
+    "智能体运行位置，当前：此电脑",
+  );
+});
