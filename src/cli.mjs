@@ -42,8 +42,10 @@ import {
 } from "./lib/paths.mjs";
 import { sha256File } from "./lib/hash.mjs";
 import {
+  formatAntigravityProcesses,
   isAntigravityRunning,
   launchAntigravity,
+  listAntigravityProcesses,
   waitForAntigravityExit,
 } from "./lib/processes.mjs";
 import { readInstallState, writeInstallState } from "./lib/state.mjs";
@@ -217,9 +219,13 @@ async function prepareRuntimeUi(inspection) {
 }
 
 async function askUserToCloseAntigravity(message) {
-  if (!(await isAntigravityRunning())) {
+  const processes = await listAntigravityProcesses();
+  if (processes.length === 0) {
     return;
   }
+  console.log("仍在运行的 Antigravity 进程:");
+  console.log(formatAntigravityProcesses(processes));
+  console.log("请先保存工作并退出客户端；若主窗口已关闭，请在任务管理器的“详细信息”中核对以上 PID 并结束对应进程。后台服务也需要退出。");
   const readline = createInterface({ input, output });
   try {
     await readline.question(message);

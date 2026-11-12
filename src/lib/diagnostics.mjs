@@ -7,6 +7,15 @@ export const LATEST_RELEASE_URL =
 
 const adviceRules = [
   {
+    pattern: /等待 Antigravity 退出超时/,
+    advice:
+      "保存工作并退出 Antigravity；若主窗口已关闭，请在任务管理器的“详细信息”中按错误列出的 PID 核对并结束残留进程（包括 sidecar 后台服务），然后重新运行本工具。",
+  },
+  {
+    pattern: /无法检查 Antigravity 进程/,
+    advice: "确认系统允许 PowerShell/CIM 或 tasklist 查询进程，然后重试；无法确认客户端退出时工具会停止操作。",
+  },
+  {
     pattern: /AGY_INSTALL_PATH|未找到有效的 Antigravity Desktop 安装目录/,
     advice:
       "确认已安装独立版 Antigravity Desktop；如果是便携安装，请设置 AGY_INSTALL_PATH。",
