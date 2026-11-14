@@ -137,6 +137,28 @@ export function createRuntimeOverlay(dictionary) {
   function translateTextNode(node) {
     const parent = node.parentElement;
     if (!parent || isBlocked(parent)) return;
+    if (parent.closest?.('[data-testid="delete-project-button"]')) {
+      const scoped = node.nodeValue === "Delete " ? "删除" : node.nodeValue === "Project" ? "项目" : null;
+      if (scoped !== null) {
+        node.nodeValue = scoped;
+        stats.translatedTextNodes += 1;
+        return;
+      }
+    }
+    if (parent.closest?.('[data-testid="sidecar-list-empty"]')) {
+      const emptyState = {
+        "No ": "暂无",
+        automations: "自动化任务",
+        "scheduled tasks": "计划任务",
+        " yet": "",
+      };
+      const scoped = emptyState[node.nodeValue];
+      if (scoped !== undefined && scoped !== node.nodeValue) {
+        node.nodeValue = scoped;
+        stats.translatedTextNodes += 1;
+        return;
+      }
+    }
     const translated = translateValue(node.nodeValue);
     if (translated !== null && translated !== node.nodeValue) {
       node.nodeValue = translated;
