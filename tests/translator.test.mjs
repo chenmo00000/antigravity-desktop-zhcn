@@ -356,3 +356,19 @@ test("Antigravity 2.32.1 automation and customization chrome is translated", asy
   }
   assert.equal(translateDictionaryValue("Unlock the power of agent swarms.", current), null);
 });
+
+test("Antigravity 2.33.0 controls preserve branch and permission preset values", async () => {
+  const current = await loadDomTranslations();
+  for (const [source, expected] of [
+    ["Queue", "排队"],
+    ["Archive conversation", "归档对话"],
+    ["Pin conversation", "置顶对话"],
+    ["More options", "更多选项"],
+    ["Branch, current: feature/2.33.0", "分支，当前：feature/2.33.0"],
+    ["Agent permissions preset selector, current: Turbo", "智能体权限预设，当前：Turbo"],
+  ]) {
+    assert.equal(translateDictionaryValue(source, current), expected);
+  }
+  assert.equal(translateDictionaryValue("feature/2.33.0", current), null);
+  assert.equal(translateDictionaryValue("Turbo", current), null);
+});

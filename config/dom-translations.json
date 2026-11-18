@@ -447,6 +447,10 @@
     "Plan Review Policy": "计划评审策略",
     "Whether the agent asks you to review its documents.": "控制智能体是否请求你评审其文档。",
     "Queue until after the current turn.": "排队等到当前轮次结束。",
+    "Queue": "排队",
+    "Archive conversation": "归档对话",
+    "Pin conversation": "置顶对话",
+    "More options": "更多选项",
     "Interrupt the agent and send immediately.": "中断智能体并立即发送。",
     "Built-in Browser": "内置浏览器",
     "Configure link opening and built-in browser preferences.": "配置链接打开方式和内置浏览器偏好设置。",
@@ -615,6 +619,16 @@
     {
       "source": "^Select project, current: (.+)$",
       "target": "选择项目，当前：$1",
+      "flags": "u"
+    },
+    {
+      "source": "^Branch, current: (.+)$",
+      "target": "分支，当前：$1",
+      "flags": "u"
+    },
+    {
+      "source": "^Agent permissions preset selector, current: (.+)$",
+      "target": "智能体权限预设，当前：$1",
       "flags": "u"
     },
     {
