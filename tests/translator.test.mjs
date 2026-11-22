@@ -372,3 +372,20 @@ test("Antigravity 2.33.0 controls preserve branch and permission preset values",
   assert.equal(translateDictionaryValue("feature/2.33.0", current), null);
   assert.equal(translateDictionaryValue("Turbo", current), null);
 });
+
+test("Antigravity 2.34.0 project expansion preserves counts and send-key choices", async () => {
+  const current = await loadDomTranslations();
+  assert.equal(translateDictionaryValue("See all (10)", current), "查看全部（10）");
+  assert.equal(translateDictionaryValue("See all (123)", current), "查看全部（123）");
+  assert.equal(translateDictionaryValue("See all (draft)", current), null);
+  assert.equal(translateDictionaryValue("See less", current), "收起");
+  assert.equal(
+    translateDictionaryValue("Press Enter to send, Shift+Enter for a new line.", current),
+    "按 Enter 发送，按 Shift+Enter 换行。",
+  );
+  assert.equal(
+    translateDictionaryValue("Press Ctrl+Enter to send, Enter for a new line.", current),
+    "按 Ctrl+Enter 发送，按 Enter 换行。",
+  );
+  assert.equal(translateDictionaryValue("Ctrl+Enter", current), null);
+});
