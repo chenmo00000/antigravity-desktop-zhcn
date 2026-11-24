@@ -389,3 +389,18 @@ test("Antigravity 2.34.0 project expansion preserves counts and send-key choices
   );
   assert.equal(translateDictionaryValue("Ctrl+Enter", current), null);
 });
+
+test("Antigravity 2.35.0 host labels preserve remote addresses", async () => {
+  const current = await loadDomTranslations();
+  assert.equal(
+    translateDictionaryValue("Where the agent runs, current: dev.example:2222", current),
+    "智能体运行位置，当前：dev.example:2222",
+  );
+  assert.equal(
+    translateDictionaryValue("Where the agent runs, current: This Computer", current),
+    "智能体运行位置，当前：此电脑",
+  );
+  assert.equal(translateDictionaryValue("dev.example:2222", current), null);
+  assert.equal(translateDictionaryValue("SSH Host", current), "SSH 主机");
+  assert.equal(translateDictionaryValue("Search Hosts…", current), "搜索主机…");
+});

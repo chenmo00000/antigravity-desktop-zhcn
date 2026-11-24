@@ -1,9 +1,21 @@
 {
   "schemaVersion": 1,
-  "sequence": 36,
-  "issuedAt": "2026-11-22T03:17:57.186Z",
-  "expiresAt": "2027-05-21T03:17:57.186Z",
+  "sequence": 37,
+  "issuedAt": "2026-11-24T01:00:28.039Z",
+  "expiresAt": "2027-05-23T01:00:28.039Z",
   "targets": [
+    {
+      "platform": "win32",
+      "arch": "x64",
+      "appVersion": "2.35.0",
+      "packageVersion": "2.35.0",
+      "appAsarSha256": "99FF7F6CF1219F46C8437DF65CA866E384836B5230ADBA8EFD91B3152F823E15",
+      "customSchemePath": "dist/customScheme.js",
+      "customSchemeSha256": "E689DEE750FB991F7E7E9DF20E9951ED03188B63F2FAA836F7767F0EBAB87EC8",
+      "uiBundleSha256": "F039ECA519F153AEAC9A0F1D10ABC7AFD8FF4B8009EF78D684669A3C7955F54D",
+      "uiBundleSize": 12798818,
+      "notes": "Verified against the Windows x64 Antigravity Desktop 2.35.0 installation sampled on 2026-11-24."
+    },
     {
       "platform": "win32",
       "arch": "x64",
