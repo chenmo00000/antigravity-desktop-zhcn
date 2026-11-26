@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 import {
   countBundleDictionaryHits,
   createLocalizedBundle,
@@ -46,6 +47,62 @@ test("runtime overlay excludes editors and code-like regions", () => {
   assert.match(overlay, /blockedAttributeSelector/);
   assert.match(overlay, /isAttributeBlocked/);
   assert.match(overlay, /Node\.TEXT_NODE/);
+});
+
+test("native sidebar menus translate labels before display and preserve custom names", async () => {
+  const current = await loadDomTranslations();
+  const source = Buffer.from(`
+    function serialize(items, callbacks) {
+      return items.map((item, index) => {
+        const id = item.id || String(index);
+        if (item.onClick) callbacks.set(id, item.onClick);
+        const result = {id,label:item.label,type:item.type&&item.type!=="item"&&item.type!=="label"?item.type:"normal",checked:item.checked,disabled:item.type==="label"?!0:item.disabled,accelerator:item.accelerator};
+        if (item.items) result.submenu = serialize(item.items, callbacks);
+        return result;
+      });
+    }
+    globalThis.showNativeMenu = (items) => {
+      const callbacks = new Map();
+      const menu = serialize(items, callbacks);
+      return { menu, callbacks };
+    };
+  `, "utf8");
+  const { buffer } = createLocalizedBundle(source, current);
+  const context = {
+    document: { readyState: "loading", addEventListener() {} },
+  };
+  runInNewContext(buffer.toString("utf8"), context);
+
+  const onClick = () => {};
+  const { menu, callbacks } = context.showNativeMenu([
+    {
+      id: "copy",
+      testId: "group-header-copy-item",
+      label: "Copy Project Name",
+      accelerator: "Ctrl+C",
+      onClick,
+    },
+    { id: "delete", testId: "group-header-delete-item", label: "Delete Project" },
+    {
+      id: "move",
+      testId: "conversation-projects-submenu",
+      type: "submenu",
+      label: "Move to Project",
+      items: [
+        { id: "custom", testId: "conversation-project-123", label: "Archive" },
+        { id: "new", testId: "conversation-projects-new", label: "New Project..." },
+      ],
+    },
+    { id: "unrelated", label: "Archive" },
+  ]);
+  assert.deepEqual(Array.from(menu, (item) => item.label), [
+    "复制项目名称", "删除项目", "移到项目", "Archive",
+  ]);
+  assert.deepEqual(Array.from(menu[2].submenu, (item) => item.label), [
+    "Archive", "新建项目…",
+  ]);
+  assert.equal(menu[0].accelerator, "Ctrl+C");
+  assert.equal(callbacks.get("copy"), onClick);
 });
 
 test("dictionary hit count is deterministic", () => {

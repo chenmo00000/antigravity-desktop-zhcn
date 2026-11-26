@@ -3,6 +3,10 @@ import path from "node:path";
 import { projectRoot } from "./paths.mjs";
 import { sha256Buffer } from "./hash.mjs";
 
+// Match the renderer's native menu serializer independently of minified names.
+const nativeMenuLabelAnchor =
+  /label:([\w$]+)\.label(?=,type:\1\.type&&\1\.type!=="item"&&\1\.type!=="label"\?\1\.type:"normal",checked:\1\.checked,disabled:\1\.type==="label"\?!0:\1\.disabled,accelerator:)/gu;
+
 export async function loadDomTranslations() {
   const filePath = path.join(projectRoot, "config", "dom-translations.json");
   const data = JSON.parse(await readFile(filePath, "utf8"));
@@ -72,11 +76,13 @@ export function countBundleDictionaryHits(bundleText, dictionary) {
 
 export function createRuntimeOverlay(dictionary) {
   const serialized = JSON.stringify(dictionary.exact);
+  const serializedMenu = JSON.stringify(dictionary.menu ?? {});
   const serializedPatterns = JSON.stringify(dictionary.patterns ?? []);
   return `
 ;(() => {
   "use strict";
   const exactTranslations = new Map(Object.entries(${serialized}));
+  const menuTranslations = new Map(Object.entries(${serializedMenu}));
   const patternTranslations = ${serializedPatterns}.map(({ source, target, flags }) => ({
     regex: new RegExp(source, flags),
     target
@@ -100,6 +106,9 @@ export function createRuntimeOverlay(dictionary) {
     ".monaco-editor"
   ].join(",");
   const translatedAttributes = ["aria-label", "title", "placeholder"];
+  const menuSelector = '[role="menu"], [data-testid="rename-conversation-submit"]';
+  const userNamedMenuItemSelector =
+    '[role="menu"] :is([data-testid^="conversation-group-"], [data-testid^="conversation-project-"])';
   const pendingRoots = new Set();
   let scheduled = false;
   const stats = {
@@ -117,13 +126,13 @@ export function createRuntimeOverlay(dictionary) {
     return Boolean(element?.closest?.(blockedAttributeSelector));
   }
 
-  function translateValue(value) {
+  function translateValue(value, isMenu = false) {
     if (typeof value !== "string" || value.length === 0) return null;
     const leading = value.match(/^\\s*/u)?.[0] ?? "";
     const trailing = value.match(/\\s*$/u)?.[0] ?? "";
     const coreEnd = value.length - trailing.length;
     const core = value.slice(leading.length, coreEnd);
-    const exact = exactTranslations.get(core);
+    const exact = (isMenu ? menuTranslations.get(core) : undefined) ?? exactTranslations.get(core);
     if (exact !== undefined) return leading + exact + trailing;
     for (const { regex, target } of patternTranslations) {
       regex.lastIndex = 0;
@@ -132,6 +141,20 @@ export function createRuntimeOverlay(dictionary) {
       return leading + core.replace(regex, target) + trailing;
     }
     return null;
+  }
+
+  function translateElementValue(value, element) {
+    if (element.closest?.(userNamedMenuItemSelector)) return null;
+    return translateValue(value, Boolean(element.closest?.(menuSelector)));
+  }
+
+  function translateNativeMenuLabel(value, testId, itemId) {
+    // Project and group destinations can carry names entered by the user.
+    if (/^conversation-(?:group|project)-/u.test(testId)) return value;
+    if (itemId !== "sort-label" && !/^(?:group-header-|conversation-)/u.test(testId)) {
+      return value;
+    }
+    return translateValue(value, true) ?? value;
   }
 
   function translateTextNode(node) {
@@ -159,7 +182,7 @@ export function createRuntimeOverlay(dictionary) {
         return;
       }
     }
-    const translated = translateValue(node.nodeValue);
+    const translated = translateElementValue(node.nodeValue, parent);
     if (translated !== null && translated !== node.nodeValue) {
       node.nodeValue = translated;
       stats.translatedTextNodes += 1;
@@ -171,7 +194,7 @@ export function createRuntimeOverlay(dictionary) {
     for (const attribute of translatedAttributes) {
       if (!element.hasAttribute(attribute)) continue;
       const current = element.getAttribute(attribute);
-      const translated = translateValue(current);
+      const translated = translateElementValue(current, element);
       if (translated !== null && translated !== current) {
         element.setAttribute(attribute, translated);
         stats.translatedAttributes += 1;
@@ -240,12 +263,14 @@ export function createRuntimeOverlay(dictionary) {
       attributes: true,
       attributeFilter: translatedAttributes
     });
-    globalThis.__AGY_ZHCN__ = Object.freeze({
-      version: "0.1.1",
-      strategy: "dom-overlay",
-      stats
-    });
   }
+
+  globalThis.__AGY_ZHCN__ = Object.freeze({
+    version: "0.1.1",
+    strategy: "dom-overlay",
+    stats,
+    translateNativeMenuLabel
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start, { once: true });
@@ -259,7 +284,13 @@ export function createRuntimeOverlay(dictionary) {
 export function createLocalizedBundle(sourceBuffer, dictionary) {
   const sourceText = sourceBuffer.toString("utf8");
   const overlay = createRuntimeOverlay(dictionary);
-  const localized = Buffer.from(`${sourceText}\n${overlay}`, "utf8");
+  const nativeMenuAnchors = [...sourceText.matchAll(nativeMenuLabelAnchor)];
+  const localizedSource = nativeMenuAnchors.length === 1
+    ? sourceText.replace(nativeMenuLabelAnchor, (_match, item) =>
+        `label:(globalThis.__AGY_ZHCN__?.translateNativeMenuLabel?.(${item}.label,${item}.testId,${item}.id)??${item}.label)`,
+      )
+    : sourceText;
+  const localized = Buffer.from(`${localizedSource}\n${overlay}`, "utf8");
   return {
     buffer: localized,
     sha256: sha256Buffer(localized),
