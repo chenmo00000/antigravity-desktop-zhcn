@@ -130,10 +130,16 @@ antigravity-desktop-zhcn-portable-win-x64.zip
 - 只处理页面文本节点，以及 `aria-label`、`title`、`placeholder`；
 - 跳过代码、编辑器、输入框和 `contenteditable` 区域；
 - 通过 `MutationObserver` 处理后续渲染的界面；
+- 翻译已核实的浏览器原生提示和确认框文案，保留确认与取消的原有行为；
 - 不修改请求参数、状态对象、模型返回内容或本地项目文件。
 
 为加载本地 UI，安装器会在验证过的 `dist/customScheme.js` 中注册
-`agy-zhcn://`，并只重定向 Antigravity 本地服务的 `/main.js`。
+`agy-zhcn://`，并只重定向 Antigravity 本地服务的 `/main.js`。同一入口还会安装
+范围受限的主进程文案覆盖，翻译托盘菜单、动态运行数量和退出确认框；保留原菜单操作、
+WSL 发行版名称、按钮索引及确认结果。
+
+覆盖范围包括客户端网页界面、已登记的浏览器原生提示，以及上述主进程控件。
+其他尚未登记的系统窗口不在覆盖范围内。
 
 ## 安全与回滚
 

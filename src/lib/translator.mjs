@@ -18,7 +18,14 @@ export async function loadDomTranslations() {
   ) {
     throw new Error("DOM 翻译词典格式无效。");
   }
-  for (const pattern of data.patterns) {
+  if (data.nativeDialogs && (
+    !data.nativeDialogs.exact ||
+    typeof data.nativeDialogs.exact !== "object" ||
+    !Array.isArray(data.nativeDialogs.patterns)
+  )) {
+    throw new Error("原生弹窗翻译词典格式无效。");
+  }
+  for (const pattern of [...data.patterns, ...(data.nativeDialogs?.patterns ?? [])]) {
     if (
       !pattern ||
       typeof pattern.source !== "string" ||
@@ -78,6 +85,7 @@ export function createRuntimeOverlay(dictionary) {
   const serialized = JSON.stringify(dictionary.exact);
   const serializedMenu = JSON.stringify(dictionary.menu ?? {});
   const serializedPatterns = JSON.stringify(dictionary.patterns ?? []);
+  const serializedDialogs = JSON.stringify(dictionary.nativeDialogs ?? { exact: {}, patterns: [] });
   return `
 ;(() => {
   "use strict";
@@ -86,6 +94,11 @@ export function createRuntimeOverlay(dictionary) {
   const patternTranslations = ${serializedPatterns}.map(({ source, target, flags }) => ({
     regex: new RegExp(source, flags),
     target
+  }));
+  const nativeDialogs = ${serializedDialogs};
+  const nativeDialogTranslations = new Map(Object.entries(nativeDialogs.exact ?? {}));
+  const nativeDialogPatterns = (nativeDialogs.patterns ?? []).map(({ source, target, flags }) => ({
+    regex: new RegExp(source, flags), target
   }));
   const blockedSelector = [
     "script",
@@ -160,6 +173,27 @@ export function createRuntimeOverlay(dictionary) {
   function translateTextNode(node) {
     const parent = node.parentElement;
     if (!parent || isBlocked(parent)) return;
+    // Names in deletion prompts are user data, even when they match a UI label.
+    if (parent.closest?.(
+      '[data-testid="delete-sidecar-modal"] strong, [data-testid="delete-mcp-modal"] strong, ' +
+      '[data-testid="delete-credential-modal"] strong, [data-testid="delete-skill-modal"] > div:first-child strong'
+    )) return;
+    const paragraph = parent.closest?.('[role="dialog"] p');
+    if (paragraph && /^(?:Are you sure you want to delete the |确定要删除)/u.test(paragraph.firstChild?.nodeValue ?? "")) {
+      if (parent !== paragraph) return;
+      const fragments = {
+        "Are you sure you want to delete the ": "确定要删除",
+        project: "项目",
+        workspace: "工作区",
+        "?": "吗？"
+      };
+      const scoped = Object.hasOwn(fragments, node.nodeValue) ? fragments[node.nodeValue] : undefined;
+      if (scoped !== undefined && scoped !== node.nodeValue) {
+        node.nodeValue = scoped;
+        stats.translatedTextNodes += 1;
+      }
+      return;
+    }
     if (parent.closest?.('[data-testid="delete-project-button"]')) {
       const scoped = node.nodeValue === "Delete " ? "删除" : node.nodeValue === "Project" ? "项目" : null;
       if (scoped !== null) {
@@ -263,6 +297,31 @@ export function createRuntimeOverlay(dictionary) {
       attributes: true,
       attributeFilter: translatedAttributes
     });
+  }
+
+  // Browser-native confirmations have no DOM for the observer to translate.
+  if (typeof window !== "undefined") {
+    for (const method of ["alert", "confirm"]) {
+      const original = window[method];
+      if (typeof original !== "function") continue;
+      window[method] = function (...args) {
+        const value = args[0];
+        if (typeof value === "string") {
+          let translated = nativeDialogTranslations.get(value);
+          if (translated === undefined) {
+            for (const { regex, target } of nativeDialogPatterns) {
+              regex.lastIndex = 0;
+              if (!regex.test(value)) continue;
+              regex.lastIndex = 0;
+              translated = value.replace(regex, target);
+              break;
+            }
+          }
+          if (translated !== undefined) args[0] = translated;
+        }
+        return Reflect.apply(original, window, args);
+      };
+    }
   }
 
   globalThis.__AGY_ZHCN__ = Object.freeze({

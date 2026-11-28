@@ -12,6 +12,7 @@ import path from "node:path";
 import os from "node:os";
 import { Readable } from "node:stream";
 import { sha256Buffer, sha256File } from "./hash.mjs";
+import { createNativeUiOverlay } from "./native-ui.mjs";
 import {
   getAsarEntry,
   readAsarHeader,
@@ -79,9 +80,10 @@ export function patchCustomSchemeSource(source) {
     throw new Error("customScheme.js 补丁锚点不唯一，拒绝修改。");
   }
 
-  return normalized
+  const patched = normalized
     .replace(SCHEME_LIST_ANCHOR, SCHEME_LIST_REPLACEMENT)
     .replace(HANDLER_ANCHOR, HANDLER_REPLACEMENT);
+  return `${patched}\n${createNativeUiOverlay()}`;
 }
 
 function createArchiveStreams({
